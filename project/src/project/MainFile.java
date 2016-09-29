@@ -44,6 +44,7 @@ public class MainFile {
 		connection.connect("127.0.0.1", "project");
 
 		// create transaction objects here
+		NewOrderTransaction newOrder = new NewOrderTransaction(connection);
 
 		// get transaction file.
 		String path = "../data/D%d-xact/%d.txt";
@@ -78,7 +79,7 @@ public class MainFile {
 						quantity[i] = Integer.parseInt(nLine[2]);
 					}
 					// send to Order object to do the insertion to DB
-					
+					newOrder.newOrder(wid, did, cid, noOfItem, itemID, supplyWID, quantity);
 
 				} else if (inputLine.charAt(0) == 'P') {
 					// payment transaction --> 1 line
