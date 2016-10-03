@@ -64,14 +64,13 @@ def loadDataIntoOldSchema(cursor,db):
 
 def mySQLtoCSV(cursor,db):
 	global CSVFilesDir;
-	""""cursor.execute("select w.w_id,d.d_id,w.w_name,w.w_street_1,w.w_street_2,w.w_city,w.w_state,w.w_zip,d.d_name,d.d_street_1,d.d_street_2,d.d_city,d.d_state,d.d_zip from warehouse w, district d where w.w_id = d.d_w_id into outfile '"+os.path.join(CSVFilesDir,"new_warehousedistrict.csv")+"' fields terminated by ',' lines terminated by '\n';");
+	cursor.execute("select w.w_id,d.d_id,w.w_name,w.w_street_1,w.w_street_2,w.w_city,w.w_state,w.w_zip,d.d_name,d.d_street_1,d.d_street_2,d.d_city,d.d_state,d.d_zip from warehouse w, district d where w.w_id = d.d_w_id into outfile '"+os.path.join(CSVFilesDir,"new_warehousedistrict.csv")+"' fields terminated by ',' lines terminated by '\n';");
 	cursor.execute("select s.s_w_id,s.s_i_id,i.i_name,i.i_price,i.i_im_id,i.i_data,s.s_quantity,s.s_ytd,s.s_order_cnt,s.s_remote_cnt,s.s_dist_01,s.s_dist_02,s.s_dist_03,s.s_dist_04,s.s_dist_05,s.s_dist_06,s.s_dist_07,s.s_dist_08,s.s_dist_09,s.s_dist_10,s.s_data from stock s, item i  where i.i_id = s.s_i_id into outfile '"+os.path.join(CSVFilesDir,"new_inventory.csv")+"' fields terminated by ',' lines terminated by '\n';");
 	cursor.execute("select c.c_w_id,c.c_d_id,c.c_id,c.c_first,c.c_middle,c.c_last,c.c_street_1,c.c_street_2,c.c_city,c.c_state,c.c_zip,c.c_phone,c.c_since,c.c_credit,c.c_credit_lim,c.c_discount,c.c_balance,c.c_ytd_payment,c.c_payment_cnt,c.c_delivery_cnt,c.c_data,w.w_name,d.d_name from customer c,warehouse w, district d where w.w_id = d.d_w_id and c.c_d_id = d.d_id and c.c_w_id = d.d_w_id into outfile '"+os.path.join(CSVFilesDir,"new_customer.csv")+"' fields terminated by ',' lines terminated by '\n';");
-	"""
 	cursor.execute("select ol.ol_w_id,ol.ol_d_id,ol.ol_o_id,ol.ol_number,ol.ol_i_id,ol.ol_amount,ol.ol_supply_w_id,ol.ol_quantity,ol.ol_dist_info,i.i_name from orderline ol, item i where i.i_id = ol.ol_i_id into outfile '"+os.path.join(CSVFilesDir,"new_orderline.csv")+"' fields terminated by ',' lines terminated by '\n';");	
-	"""cursor.execute("select o.*, sum(ol.ol_amount),ol.ol_delivery_d from orders o, orderline ol where o.o_w_id=ol.ol_w_id and o.o_d_id=ol.ol_d_id and o.o_id=ol.ol_o_id group by o.o_w_id,o.o_d_id,o.o_id,o.o_c_id,o.o_Carrier_id,o.o_ol_cnt,o.o_all_local,o.o_entry_d into outfile '"+os.path.join(CSVFilesDir,"new_order.csv")+"' fields terminated by ',' lines terminated by '\n';");
+	cursor.execute("select o.*, sum(ol.ol_amount),ol.ol_delivery_d from orders o, orderline ol where o.o_w_id=ol.ol_w_id and o.o_d_id=ol.ol_d_id and o.o_id=ol.ol_o_id group by o.o_w_id,o.o_d_id,o.o_id,o.o_c_id,o.o_Carrier_id,o.o_ol_cnt,o.o_all_local,o.o_entry_d into outfile '"+os.path.join(CSVFilesDir,"new_order.csv")+"' fields terminated by ',' lines terminated by '\n';");
 	warehouseDistrictInfoToCSV(cursor,db);
-	"""
+	
 def warehouseDistrictInfoToCSV(cursor,db):
 	global CSVFilesDir;
 	print("I am here");
