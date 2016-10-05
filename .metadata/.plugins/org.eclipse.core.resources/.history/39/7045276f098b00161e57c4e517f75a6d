@@ -1,0 +1,15 @@
+package project;
+
+public class PopularItemTransaction {
+	private Session session;
+	
+	public PopularItemTransaction(){
+		
+	}
+	
+	public PopularItemTransaction(Connection connection){
+		this.session = connection.getSession();
+	}
+	
+
+}

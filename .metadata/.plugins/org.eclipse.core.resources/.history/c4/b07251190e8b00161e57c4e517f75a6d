@@ -1,0 +1,34 @@
+package project;
+
+import com.datastax.driver.core.PreparedStatement;
+import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.Session;
+
+public class PopularItemTransaction {
+	private Session session;
+	private PreparedStatement selectWarehouseStmt;
+	
+	public PopularItemTransaction(){
+		
+	}
+	
+	public PopularItemTransaction(Connection connection){
+		this.session = connection.getSession();
+		selectWarehouseStmt = session.prepare("SELECT ? FROM warehouseDistrictInfo WHERE wdi_w_id = ?");
+	}
+	
+	public void getPopularItem(int wID, int dID, int noOfLastOrders){
+		
+		String nextID;
+		if(dID == 10){
+			nextID = "wdi_d_next_o_id_10";
+		}else{
+			nextID = "wdi_d_next_o_id_0" + dID;
+		}
+		
+		ResultSet warehouseResult = session.execute(selectWarehouseStmt.bind(nextID, wID));
+		int nextOID = warehouseResult.one().getInt(nextID);
+		
+	}
+
+}

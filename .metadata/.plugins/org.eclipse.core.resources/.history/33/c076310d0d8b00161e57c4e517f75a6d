@@ -1,0 +1,23 @@
+package project;
+
+import com.datastax.driver.core.PreparedStatement;
+import com.datastax.driver.core.Session;
+
+public class PopularItemTransaction {
+	private Session session;
+	private PreparedStatement selectWarehouseStmt;
+	
+	public PopularItemTransaction(){
+		
+	}
+	
+	public PopularItemTransaction(Connection connection){
+		this.session = connection.getSession();
+		selectWarehouseStmt = session.prepare("");
+	}
+	
+	public void getPopularItem(int wID, int dID, int noOfLastOrders){
+		
+	}
+
+}

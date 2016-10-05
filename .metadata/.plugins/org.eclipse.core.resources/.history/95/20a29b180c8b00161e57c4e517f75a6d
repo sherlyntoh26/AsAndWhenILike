@@ -1,0 +1,20 @@
+package project;
+
+import com.datastax.driver.core.Session;
+
+public class PopularItemTransaction {
+	private Session session;
+	
+	public PopularItemTransaction(){
+		
+	}
+	
+	public PopularItemTransaction(Connection connection){
+		this.session = connection.getSession();
+	}
+	
+	public void getPopularItem(int wID, int dID, int noOfLastOrders){
+		
+	}
+
+}

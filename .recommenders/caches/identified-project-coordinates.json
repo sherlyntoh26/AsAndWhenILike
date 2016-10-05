@@ -1,0 +1,1 @@
+[[{"location":"/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home","type":"JRE","hints":{"EXECUTION_ENVIRONMENT":"JavaSE-1.8"}},"jre:jre:1.8.0"],[{"location":"/Users/sherlyntoh/.m2/repository/com/datastax/cassandra/cassandra-driver-core/3.1.0/cassandra-driver-core-3.1.0.jar","type":"JAR","hints":{}},"com.datastax.cassandra:cassandra-driver-core:3.1.0"]]
