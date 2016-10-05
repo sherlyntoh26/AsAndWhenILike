@@ -12,6 +12,7 @@ public class PaymentTransaction {
 	private Session session;
 	private PreparedStatement selectWarehouseStmt;
 	private PreparedStatement updateWarehouseStmt;
+	private PreparedStatement selectCustomerStmt;
 
 	public PaymentTransaction() {
 
@@ -21,6 +22,7 @@ public class PaymentTransaction {
 		session = connection.getSession();
 		selectWarehouseStmt = session.prepare("SELECT wdi_w_ytd, ? FROM warehouseDistrictInfo WHERE wdi_w_id = ?;");
 		updateWarehouseStmt = session.prepare("UPDATE warehouseDistrictInfo SET wdi_w_ytd = ?, ? = ? WHERE wdi_w_id = ?;");
+		selectCustomerStmt = session.prepare("SELECT c_balance, c_ytd_payment, c_payment_cnt WHERE c_w_id = ? AND c_d_id = ? AND c_id = ?;");
 	}
 
 	public void makePayment(int cWID, int cDID, int cID, float payment) {
@@ -41,6 +43,8 @@ public class PaymentTransaction {
 		d_ytd += payment;
 		session.execute(updateWarehouseStmt.bind(BigDecimal.valueOf(w_ytd), wdi_d_ytd, BigDecimal.valueOf(d_ytd), cWID));
 
+		// update customer --> decrease c_balance by payment, increase c_ytd_payment by payment, increase c_payment_cnt by 1
+		
 	}
 
 	// for payment transaction running alone.

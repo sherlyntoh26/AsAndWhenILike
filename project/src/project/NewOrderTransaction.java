@@ -3,7 +3,6 @@ package project;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Date;
 
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.ResultSet;
@@ -12,7 +11,6 @@ import com.datastax.driver.core.Session;
 
 public class NewOrderTransaction {
 	// private attributes
-	// private PreparedStatement warehouseQuery;
 	private PreparedStatement newOrderQuery;
 	private PreparedStatement newOrderLineQuery;
 	private PreparedStatement getStockQuery;
@@ -36,7 +34,6 @@ public class NewOrderTransaction {
 				"SELECT i_quantity, i_ytd, i_order_cnt, i_remote_cnt, i_price, i_name FROM inventory WHERE i_id = ? AND i_w_id = ?;");
 		getCustomerQuery = session.prepare(
 				"SELECT c_discount, c_last, c_credit FROM customer WHERE c_w_id = ? AND c_d_id = ? AND c_id =?;");
-		
 	}
 
 	public void newOrder(int cWID, int cDID, int cID, int numOfItems, int[] itemNumberArr, int[] sWarehouseID,
@@ -75,11 +72,6 @@ public class NewOrderTransaction {
 		float totalAmt = 0.0f;
 		ArrayList<String> arrayListOutput = new ArrayList<String>();
 		for (int i = 0; i < numOfItems; i++) {
-
-//			if (sWarehouseID[i] != cWID) {
-//				allLocal = 0;
-//			}
-
 			results = session.execute(getStockQuery.bind(itemNumberArr[i], sWarehouseID[i]));
 			Row rowStock = results.one();
 			float stockQty = rowStock.getDecimal("i_quantity").floatValue();
@@ -122,7 +114,7 @@ public class NewOrderTransaction {
 		String credit = rowCustomer.getString("c_credit");
 		totalAmt = totalAmt * (1 + dTax + wTax) * (1 - cDiscount);
 		//Date orderDate = new Date();
-		Timestamp orderDate = new Timestamp(0);
+		Timestamp orderDate = new Timestamp(System.currentTimeMillis());
 		session.execute(newOrderQuery.bind(cWID, cDID, nextOrderID, cID, null, BigDecimal.valueOf(numOfItems), BigDecimal.valueOf(allLocal), orderDate,
 				totalAmt, null));
 
@@ -147,19 +139,20 @@ public class NewOrderTransaction {
 		 NewOrderTransaction newOrder = new NewOrderTransaction(connection);
 		
 		
-//Date since = new Date();
-//System.out.println(since);
-//Timestamp ts = new Timestamp(0);
-//System.out.println(ts);
+// Date since = new Date();
+// System.out.println(since);
+// Timestamp ts = new Timestamp(0);
+// Timestamp ts = new Timestamp(System.currentTimeMillis());
+// System.out.println(ts);
 		
 		// insert fake data into database
-		/*PreparedStatement invStmt = newOrder.session.prepare("INSERT INTO inventory(i_w_id, i_id, i_name, i_price, i_im_id, i_b_data, i_quantity, i_ytd, i_order_cnt, i_remote_cnt, i_dist_01, i_dist_02, i_dist_03, i_dist_04, i_dist_05, i_dist_06, i_dist_07, i_dist_08, i_dist_09, i_dist_10, i_data) VALUES(1, 39741, 'item1', 2, 1, 'bdata', 50, 0, 0, 0, 'dist1', 'dist2', 'dist3', 'dist4', 'dist5', 'dist6', 'dist7', 'dist8', 'dist9', 'dist10', 'sdata')");
+		/*PreparedStatement invStmt = newOrder.session.prepare("INSERT INTO inventory(i_w_id, i_id, i_name, i_price, i_im_id, i_b_data, i_quantity, i_ytd, i_order_cnt, i_remote_cnt, i_dist_01, i_dist_02, i_dist_03, i_dist_04, i_dist_05, i_dist_06, i_dist_07, i_dist_08, i_dist_09, i_dist_10, i_data) VALUES(2, 39741, 'item1', 2, 1, 'bdata', 50, 0, 0, 0, 'dist1', 'dist2', 'dist3', 'dist4', 'dist5', 'dist6', 'dist7', 'dist8', 'dist9', 'dist10', 'sdata')");
 		newOrder.session.execute(invStmt.bind());
-		invStmt = newOrder.session.prepare("INSERT INTO inventory(i_w_id, i_id, i_name, i_price, i_im_id, i_b_data, i_quantity, i_ytd, i_order_cnt, i_remote_cnt, i_dist_01, i_dist_02, i_dist_03, i_dist_04, i_dist_05, i_dist_06, i_dist_07, i_dist_08, i_dist_09, i_dist_10, i_data) VALUES(1, 26821, 'item1', 2, 1, 'bdata', 50, 0, 0, 0, 'dist1', 'dist2', 'dist3', 'dist4', 'dist5', 'dist6', 'dist7', 'dist8', 'dist9', 'dist10', 'sdata')");
+		invStmt = newOrder.session.prepare("INSERT INTO inventory(i_w_id, i_id, i_name, i_price, i_im_id, i_b_data, i_quantity, i_ytd, i_order_cnt, i_remote_cnt, i_dist_01, i_dist_02, i_dist_03, i_dist_04, i_dist_05, i_dist_06, i_dist_07, i_dist_08, i_dist_09, i_dist_10, i_data) VALUES(2, 26821, 'item1', 2, 1, 'bdata', 50, 0, 0, 0, 'dist1', 'dist2', 'dist3', 'dist4', 'dist5', 'dist6', 'dist7', 'dist8', 'dist9', 'dist10', 'sdata')");
 		newOrder.session.execute(invStmt.bind());
 		*/
 		
-		/*PreparedStatement warehouseStmt = newOrder.session.prepare("INSERT INTO warehouseDistrictInfo(wdi_w_id, wdi_w_tax, wdi_w_ytd, wdi_d_next_o_id_01, wdi_d_next_o_id_02, wdi_d_next_o_id_03, wdi_d_next_o_id_04, wdi_d_next_o_id_05, wdi_d_next_o_id_06, wdi_d_next_o_id_07, wdi_d_next_o_id_08, wdi_d_next_o_id_09, wdi_d_next_o_id_10, wdi_d_tax_01, wdi_d_tax_02, wdi_d_tax_03, wdi_d_tax_04, wdi_d_tax_05, wdi_d_tax_06, wdi_d_tax_07, wdi_d_tax_08, wdi_d_tax_09, wdi_d_tax_10, wdi_d_ytd_01, wdi_d_ytd_02, wdi_d_ytd_03, wdi_d_ytd_04, wdi_d_ytd_05, wdi_d_ytd_06, wdi_d_ytd_07, wdi_d_ytd_08, wdi_d_ytd_09, wdi_d_ytd_10) VALUES (1, 0.2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)");
+		/*PreparedStatement warehouseStmt = newOrder.session.prepare("INSERT INTO warehouseDistrictInfo(wdi_w_id, wdi_w_tax, wdi_w_ytd, wdi_d_next_o_id_01, wdi_d_next_o_id_02, wdi_d_next_o_id_03, wdi_d_next_o_id_04, wdi_d_next_o_id_05, wdi_d_next_o_id_06, wdi_d_next_o_id_07, wdi_d_next_o_id_08, wdi_d_next_o_id_09, wdi_d_next_o_id_10, wdi_d_tax_01, wdi_d_tax_02, wdi_d_tax_03, wdi_d_tax_04, wdi_d_tax_05, wdi_d_tax_06, wdi_d_tax_07, wdi_d_tax_08, wdi_d_tax_09, wdi_d_tax_10, wdi_d_ytd_01, wdi_d_ytd_02, wdi_d_ytd_03, wdi_d_ytd_04, wdi_d_ytd_05, wdi_d_ytd_06, wdi_d_ytd_07, wdi_d_ytd_08, wdi_d_ytd_09, wdi_d_ytd_10) VALUES (2, 0.2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)");
 		newOrder.session.execute(warehouseStmt.bind());
 		*/
 		
@@ -172,9 +165,10 @@ public class NewOrderTransaction {
 		
 		// create transaction objects here
 		int[] itemID = {39741, 26821};
-		int[] supplyWID = {1, 1};
+		int[] supplyWID = {2, 1};
 		int[] quantity = {5, 2};
 		newOrder.newOrder(1, 1, 331, 2, itemID, supplyWID, quantity);
+		System.out.println("IM SO DONE HERE");
 	}
 
 }

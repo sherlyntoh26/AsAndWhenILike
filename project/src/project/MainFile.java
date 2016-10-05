@@ -8,43 +8,69 @@ import com.datastax.driver.core.*;
 
 public class MainFile {
 	private boolean usingD8;
+	private String dbKeyspace;
 	private int noOfNodes;
+	private String ipAdd;
 	private int transactionFileNumber;
 
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
 		boolean usingD8;
+		String dbKeySpace;
 		int noOfNodes;
 		int transactionFileNumber;
 		if (args == null || args.length <= 0) {
 			usingD8 = true;
+			dbKeySpace = "d8";
 			noOfNodes = 1;
 			transactionFileNumber = 0;
 		} else {
 			usingD8 = (args[0].trim()).equals("D8");
+			if(usingD8){
+				dbKeySpace = "d8";
+			}else{
+				dbKeySpace = "d40";
+			}
 			noOfNodes = Integer.parseInt(args[1]);
 			transactionFileNumber = Integer.parseInt(args[2]);
 		}
+		
+		String[] arrayIpAdd = new String[3];
+		arrayIpAdd[0] = "";
+		arrayIpAdd[1] = "";
+		arrayIpAdd[2] = "";
+		int noNum = 0;
 
 		for (int i = 0; i < transactionFileNumber; i++) {
-			MainFile mf = new MainFile(usingD8, noOfNodes, i);
+			
+			MainFile mf = new MainFile(usingD8, dbKeySpace, noOfNodes, arrayIpAdd[noNum], i);
 			mf.runTransactions();
+			noNum++;
+			if(noNum == 3){
+				noNum = 0;
+			}
 		}
 	}
 
-	public MainFile(boolean usingD8, int noOfNodes, int transactionFileNumber) {
+	public MainFile(boolean usingD8, String dbKeyspace, int noOfNodes, String ipAdd, int transactionFileNumber) {
 		this.usingD8 = usingD8;
+		this.ipAdd = ipAdd;
+		this.dbKeyspace = dbKeyspace;
 		this.noOfNodes = noOfNodes;
 		this.transactionFileNumber = transactionFileNumber;
 	}
 
 	public void runTransactions() {
+		// do timing here. 
+		
+		
 		// get connection
 		Connection connection = new Connection();
-		connection.connect("127.0.0.1", "project");
+		connection.connect(ipAdd, dbKeyspace);
 
 		// create transaction objects here
 		NewOrderTransaction newOrder = new NewOrderTransaction(connection);
+		PaymentTransaction newPayment = new PaymentTransaction(connection);
 
 		// get transaction file.
 		String path = "../data/D%d-xact/%d.txt";
@@ -71,7 +97,7 @@ public class MainFile {
 					// 3 comma: OL_I_ID, OL_SUPPLY_W_ID, OL_QUANTITY
 					String nextLine;
 					String[] nLine;
-					for(int i=0; i<noOfItem; i++){
+					for(int i = 0; i < noOfItem; i++){
 						nextLine = reader.readLine();
 						nLine = nextLine.split(",");
 						itemID[i] = Integer.parseInt(nLine[0]);
@@ -90,6 +116,7 @@ public class MainFile {
 					float paymentAmt = Float.parseFloat(currentLine[4]);
 					
 					// send to Payment object to do the update of customer in DB
+					newPayment.makePayment(customerWID, customerDID, customerID, paymentAmt);
 
 				} else if (inputLine.charAt(0) == 'D') {
 					// delivery transaction --> 1 line

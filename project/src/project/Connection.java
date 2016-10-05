@@ -14,7 +14,6 @@ public class Connection {
 	public void connect(String node, String keyspaceName){
 		cluster = Cluster.builder().addContactPoints(node).build();
 		session = cluster.connect(keyspaceName);
-		//session = cluster.connect();
 	}
 	
 	public Session getSession(){
