@@ -1,0 +1,30 @@
+package project;
+
+import com.datastax.driver.core.PreparedStatement;
+import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.Row;
+import com.datastax.driver.core.Session;
+
+public class OrderStatusTransaction {
+	private Session session;
+	private PreparedStatement selectCustomerStmt;
+
+	public OrderStatusTransaction() {
+		// public constructor
+	}
+
+	public OrderStatusTransaction(Connection connection) {
+		session = connection.getSession();
+		
+		selectCustomerStmt = session.prepare("SELECT c_first, c_middle, c_last, c_balance FROM customer WHERE c_w_id = ? AND c_d_id = ? AND c_id = ?;");
+	}
+	
+	public void getOrderStatus(int cWID, int cDID, int cID){
+		
+		ResultSet customerResult = session.execute(selectCustomerStmt.bind(cWID, cDID, cID));
+		Row customerRow = customerResult.one();
+		System.out.println(String.format("Customer's Name: (%s, %s, %s) | Balance: %.2f", customerRow.getString("c_first"), customerRow.getString("c_middle"), customerRow.getString("c_last"), customerRow.getDecimal("c_balance").floatValue()));
+		
+		
+	}
+}

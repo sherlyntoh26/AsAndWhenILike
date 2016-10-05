@@ -1,0 +1,35 @@
+package project;
+
+import com.datastax.driver.core.PreparedStatement;
+import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.Row;
+import com.datastax.driver.core.Session;
+
+public class OrderStatusTransaction {
+	private Session session;
+	private PreparedStatement selectCustomerStmt;
+	private PreparedStatement selectOrderStmt;
+
+	public OrderStatusTransaction() {
+		// public constructor
+	}
+
+	public OrderStatusTransaction(Connection connection) {
+		session = connection.getSession();
+		
+		selectCustomerStmt = session.prepare("SELECT c_first, c_middle, c_last, c_balance FROM customer WHERE c_w_id = ? AND c_d_id = ? AND c_id = ?;");
+		selectOrderStmt = session.prepare("SELECT o_id, o_entry_d, o_carrier_id FROM orders WHERE o_w_id = ? AND o_d_id = ? AND o_c_id = ? ORDER BY o_id DESC LIMIT 1;");
+	}
+	
+	public void getOrderStatus(int cWID, int cDID, int cID){
+		
+		ResultSet customerResult = session.execute(selectCustomerStmt.bind(cWID, cDID, cID));
+		Row customerRow = customerResult.one();
+		System.out.println(String.format("Customer's Name: (%s, %s, %s) | Balance: %.2f", customerRow.getString("c_first"), customerRow.getString("c_middle"), customerRow.getString("c_last"), customerRow.getDecimal("c_balance").floatValue()));
+		
+		ResultSet orderResult = session.execute(selectOrderStmt.bind(cWID, cDID, cID));
+		Row orderRow = orderResult.one();
+		System.out.println(String.format(""));
+		
+	}
+}

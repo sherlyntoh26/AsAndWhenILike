@@ -1,0 +1,23 @@
+package project;
+
+import com.datastax.driver.core.PreparedStatement;
+import com.datastax.driver.core.Session;
+
+public class OrderStatusTransaction {
+	private Session session;
+	private PreparedStatement selectCustomerStmt;
+
+	public OrderStatusTransaction() {
+		// public constructor
+	}
+
+	public OrderStatusTransaction(Connection connection) {
+		session = connection.getSession();
+		
+		selectCustomerStmt = session.prepare("");
+	}
+	
+	public void getOrderStatus(int cWID, int cDID, int cID){
+		
+	}
+}

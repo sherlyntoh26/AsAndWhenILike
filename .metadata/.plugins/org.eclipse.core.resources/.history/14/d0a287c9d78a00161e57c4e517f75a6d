@@ -1,0 +1,84 @@
+package project;
+
+import java.math.BigDecimal;
+
+import com.datastax.driver.core.PreparedStatement;
+import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.Row;
+import com.datastax.driver.core.Session;
+
+public class PaymentTransaction {
+	// private attributes
+	private Session session;
+	private PreparedStatement selectWarehouseStmt;
+	private PreparedStatement updateWarehouseStmt;
+	private PreparedStatement selectCustomerStmt;
+	private PreparedStatement updateCustomerStmt;
+	private PreparedStatement selectWarehouseDistrictStmt;
+
+	public PaymentTransaction() {
+
+	}
+
+	public PaymentTransaction(Connection connection) {
+		session = connection.getSession();
+		selectWarehouseStmt = session.prepare("SELECT wdi_w_ytd, ? FROM warehouseDistrictInfo WHERE wdi_w_id = ?;");
+		updateWarehouseStmt = session.prepare("UPDATE warehouseDistrictInfo SET wdi_w_ytd = ?, ? = ? WHERE wdi_w_id = ?;");
+		selectCustomerStmt = session.prepare("SELECT c_first, c_middle, c_last, c_street_1, c_street_2, c_city, c_state, c_zip, c_phone, c_since, c_credit, c_credit_lim, c_discount, c_balance, c_ytd_payment, c_payment_cnt FROM customer WHERE c_w_id = ? AND c_d_id = ? AND c_id = ?;");
+		updateCustomerStmt = session.prepare("UPDATE customer SET c_balence = ?, c_ytd_payment = ?, c_payment_cnt = ? WHERE c_w_id = ? AND c_d_id = ? AND c_id = ?;");
+		selectWarehouseDistrictStmt = session.prepare("SELECT wd_w_street_1, wd_w_street_2, wd_w_city, wd_w_state, wd_w_zip, wd_d_street_1, wd_d_street_2, wd_d_city, wd_d_state, wd_d_zip FROM warehouseDistrict WHERE wd_w_id = ? AND wd_d_id = ?;");
+	}
+
+	public void makePayment(int cWID, int cDID, int cID, float payment) {
+
+		String wdi_d_ytd;
+		if (cDID == 10) {
+			wdi_d_ytd = "wdi_d_ytd_10";
+		} else {
+			wdi_d_ytd = "wdi_d_ytd_0" + cDID;
+		}
+
+		// update warehouseDistrictInfo by increasing wdi_w_ytd and wdi_d_ytd_# by payment
+		ResultSet warehouseResult = session.execute(selectWarehouseStmt.bind(wdi_d_ytd, cWID));
+		Row warehouseRow = warehouseResult.one();
+		float w_ytd = warehouseRow.getDecimal("wdi_w_ytd").floatValue();
+		float d_ytd = warehouseRow.getDecimal(wdi_d_ytd).floatValue();
+		w_ytd += payment;
+		d_ytd += payment;
+		session.execute(updateWarehouseStmt.bind(BigDecimal.valueOf(w_ytd), wdi_d_ytd, BigDecimal.valueOf(d_ytd), cWID));
+		
+		// update customer --> decrease c_balance by payment, increase c_ytd_payment by payment, increase c_payment_cnt by 1
+		ResultSet customerResult = session.execute(selectCustomerStmt.bind(cWID, cDID, cID));
+		Row customerRow = customerResult.one();
+		float c_balance = customerRow.getDecimal("c_balance").floatValue();
+		float c_ytd_payment = customerRow.getFloat("c_ytd_payment");
+		int c_payment_cnt = customerRow.getInt("c_payment_cnt");
+		c_balance -= payment;
+		c_ytd_payment += payment;
+		c_payment_cnt +=1;
+		session.execute(updateCustomerStmt.bind(c_balance, c_ytd_payment, c_payment_cnt, cWID, cDID, cID));
+		
+		ResultSet warehouseDistrictResult = session.execute(selectWarehouseDistrictStmt.bind(cWID, cDID));
+		Row wdRow = warehouseDistrictResult.one();
+		
+		// output 
+		System.out.println("Customer Information:");
+		System.out.println(String.format("ID: (%d, %d, %d) | Name: (%s, %s, %s) | Address: (%s, %s, %s, %s, %s) | %s, %s, %s, %f, %f, %f", cWID, cDID, cID, customerRow.getString("c_first"), customerRow.getString("c_middle"), customerRow.getString("c_last"), customerRow.getString("c_street_1"), customerRow.getString("c_street_2"), customerRow.getString("c_city"), customerRow.getString("c_state"), customerRow.getString("c_zip"), customerRow.getString("c_phone"), customerRow.getTimestamp("c_since").toString(), customerRow.getString("c_credit"), customerRow.getDecimal("c_credit_lim").floatValue(), customerRow.getDecimal("c_discount").floatValue(), c_balance));
+		System.out.println(String.format("Warehouse Address: (%s, %s, %s, %s, %s)", wdRow.getString("wd_w_street_1"), wdRow.getString("wd_w_street_2"), wdRow.getString("wd_w_city"), wdRow.getString("wd_w_state"), wdRow.getString("wd_w_zip")));
+		System.out.println(String.format("District Address: (%s, %s, %s, %s, %s)", wdRow.getString("wd_d_street_1"), wdRow.getString("wd_d_street_2"), wdRow.getString("wd_d_city"), wdRow.getString("wd_d_state"), wdRow.getString("wd_d_zip")));
+		System.out.println(String.format("Payment Amount: %.2f", payment));
+		
+	}
+
+	// for payment transaction running alone.
+	// debuggin use
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+		Connection connection = new Connection();
+		connection.connect("127.0.0.1", "project");
+		PaymentTransaction payment = new PaymentTransaction(connection);
+
+		payment.makePayment(1, 1, 331, 1.02f);
+	}
+
+}

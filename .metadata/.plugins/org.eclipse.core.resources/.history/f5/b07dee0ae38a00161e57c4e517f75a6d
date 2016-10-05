@@ -1,0 +1,19 @@
+package project;
+
+import com.datastax.driver.core.Session;
+
+public class TopBalanceTransaction {
+	private Session session;
+
+	public TopBalanceTransaction(){
+		// public constructor
+	}
+	
+	public TopBalanceTransaction(Connection connection){
+		session = connection.getSession();
+	}
+	
+	public void getTopbalance(){
+		
+	}
+}

@@ -11,11 +11,14 @@ import com.datastax.driver.core.Session;
 
 public class NewOrderTransaction {
 	// private attributes
+	private Session session;
 	private PreparedStatement newOrderQuery;
 	private PreparedStatement newOrderLineQuery;
 	private PreparedStatement getStockQuery;
 	private PreparedStatement getCustomerQuery;
-	private Session session;
+	private PreparedStatement getWarehouseQuery;
+	private PreparedStatement updateWarehouseQuery;
+	private PreparedStatement updateInventoryQuery;
 
 	public NewOrderTransaction() {
 		// public constructor
@@ -27,13 +30,17 @@ public class NewOrderTransaction {
 
 		// initiate query
 		newOrderQuery = session.prepare(
-				"INSERT INTO orderTable(o_w_id, o_d_id, o_id, o_c_id, o_carrier_id, o_ol_cnt, o_all_local, o_entry_d, o_total_amount, o_delivery_d) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+				"INSERT INTO orders(o_w_id, o_d_id, o_id, o_c_id, o_carrier_id, o_ol_cnt, o_all_local, o_entry_d, o_total_amount, o_delivery_d) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);");
 		newOrderLineQuery = session.prepare(
-				"INSERT INTO orderLine(ol_w_id, ol_d_id, ol_o_id, ol_number, ol_i_id, ol_amount, ol_supply_w_id, ol_quantity, ol_dist_info, ol_i_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+				"INSERT INTO orderLine(ol_w_id, ol_d_id, ol_o_id, ol_number, ol_i_id, ol_amount, ol_supply_w_id, ol_quantity, ol_dist_info, ol_i_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);");
 		getStockQuery = session.prepare(
 				"SELECT i_quantity, i_ytd, i_order_cnt, i_remote_cnt, i_price, i_name FROM inventory WHERE i_id = ? AND i_w_id = ?;");
 		getCustomerQuery = session.prepare(
 				"SELECT c_discount, c_last, c_credit FROM customer WHERE c_w_id = ? AND c_d_id = ? AND c_id =?;");
+		getWarehouseQuery = session.prepare("SELECT wdi_w_tax, ?, ? FROM warehouseDistrictInfo WHERE wdi_w_id = ?;");
+		updateWarehouseQuery = session.prepare("UPDATE warehouseDistrictInfo SET ? = ? WHERE wdi_w_id = ?;");
+		//UPDATE inventory SET i_quantity = %f, i_ytd = %f, i_order_cnt = %d, i_remote_cnt = %d WHERE i_w_id = %d and i_id = %d;
+		updateInventoryQuery = session.prepare("");
 	}
 
 	public void newOrder(int cWID, int cDID, int cID, int numOfItems, int[] itemNumberArr, int[] sWarehouseID,
@@ -54,17 +61,16 @@ public class NewOrderTransaction {
 
 		// Select next available order number D_NEXT_O_ID_## from
 		// warehouseDistrictInfo based on warehouseID
-		String warehouseDistrictSelect = "SELECT wdi_w_tax," + dNextOID + "," + dTaxID
-				+ " FROM warehouseDistrictInfo WHERE wdi_w_id = " + cWID + ";";
-		ResultSet results = session.execute(warehouseDistrictSelect);
+		//String warehouseDistrictSelect = "SELECT wdi_w_tax," + dNextOID + "," + dTaxID + " FROM warehouseDistrictInfo WHERE wdi_w_id = " + cWID + ";";
+		ResultSet results = session.execute(getWarehouseQuery.bind(dNextOID, dTaxID, cWID));
 		Row rowWarehouse = results.one();
 		int nextOrderID = rowWarehouse.getInt(dNextOID);
 		float wTax = rowWarehouse.getDecimal("wdi_w_tax").floatValue();
 		float dTax = rowWarehouse.getDecimal(dTaxID).floatValue();
 
 		// Update D_NEXT_O_ID --> increase by 1
-		session.execute(String.format("UPDATE warehouseDistrictInfo SET " + dNextOID + " = %d WHERE wdi_w_id = %d ;",
-				nextOrderID + 1, cWID));
+		//session.execute(String.format("UPDATE warehouseDistrictInfo SET " + dNextOID + " = %d WHERE wdi_w_id = %d ;", nextOrderID + 1, cWID));
+		session.execute(updateWarehouseQuery.bind(dNextOID, nextOrderID + 1, cWID));
 
 		// create New order here
 		// check whether items are all local
@@ -101,7 +107,7 @@ public class NewOrderTransaction {
 			session.execute(newOrderLineQuery.bind(cWID, cDID, nextOrderID, i, itemNumberArr[i], BigDecimal.valueOf(itemAmt),
 					sWarehouseID[i], BigDecimal.valueOf(quantities[i]), "S_DIST" + district, i_name));
 
-			arrayListOutput.add(String.format("Item: %d | %s, Warehouse %d. Quantity: %d. Amount: %f, Stock: %f",
+			arrayListOutput.add(String.format("Item: %d | %s, Warehouse %d. Quantity: %d. Amount: %.2f, Stock: %.0f",
 					itemNumberArr[i], i_name, sWarehouseID[i], quantities[i], itemAmt, adjustedQty));
 		}
 
@@ -119,8 +125,8 @@ public class NewOrderTransaction {
 				totalAmt, null));
 
 		// output for this transaction
-		System.out.println(String.format("Customer %s, %s, %.2f", lastName, credit, cDiscount));
-		System.out.println(String.format("Warehouse Tax: %.2f, District tax: %.2f", wTax, dTax));
+		System.out.println(String.format("Customer %s, %s, %.4f", lastName, credit, cDiscount));
+		System.out.println(String.format("Warehouse Tax: %.4f, District tax: %.4f", wTax, dTax));
 		System.out.println(String.format("Order Number: %d, Entry Date: %s", nextOrderID, orderDate));
 		System.out.println(String.format("Number of Item: %d, Total amount: %.2f", numOfItems, totalAmt));
 
@@ -130,7 +136,7 @@ public class NewOrderTransaction {
 	}
 
 	// for new order transaction running alone.
-	// debuggin use
+	// debugging use
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
 
