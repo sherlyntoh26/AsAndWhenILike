@@ -4,6 +4,8 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 
+import com.datastax.driver.core.*;
+
 public class MainFile {
 	private boolean usingD8;
 	private String dbKeyspace;
