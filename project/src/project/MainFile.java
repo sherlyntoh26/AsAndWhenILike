@@ -4,8 +4,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 
-import com.datastax.driver.core.*;
-
 public class MainFile {
 	private boolean usingD8;
 	private String dbKeyspace;
@@ -69,8 +67,12 @@ public class MainFile {
 		connection.connect(ipAdd, dbKeyspace);
 
 		// create transaction objects here
-		NewOrderTransaction newOrder = new NewOrderTransaction(connection);
-		PaymentTransaction newPayment = new PaymentTransaction(connection);
+		NewOrderTransaction order = new NewOrderTransaction(connection);
+		PaymentTransaction payment = new PaymentTransaction(connection);
+		OrderStatusTransaction orderStatus = new OrderStatusTransaction(connection);
+		PopularItemTransaction popularItem = new PopularItemTransaction(connection);
+		TopBalanceTransaction topBalance = new TopBalanceTransaction(connection);
+		
 
 		// get transaction file.
 		String path = "../data/D%d-xact/%d.txt";
@@ -105,7 +107,7 @@ public class MainFile {
 						quantity[i] = Integer.parseInt(nLine[2]);
 					}
 					// send to Order object to do the insertion to DB
-					newOrder.newOrder(wid, did, cid, noOfItem, itemID, supplyWID, quantity);
+					order.newOrder(wid, did, cid, noOfItem, itemID, supplyWID, quantity);
 
 				} else if (inputLine.charAt(0) == 'P') {
 					// payment transaction --> 1 line
@@ -116,7 +118,7 @@ public class MainFile {
 					float paymentAmt = Float.parseFloat(currentLine[4]);
 					
 					// send to Payment object to do the update of customer in DB
-					newPayment.makePayment(customerWID, customerDID, customerID, paymentAmt);
+					payment.makePayment(customerWID, customerDID, customerID, paymentAmt);
 
 				} else if (inputLine.charAt(0) == 'D') {
 					// delivery transaction --> 1 line
@@ -134,6 +136,7 @@ public class MainFile {
 					int customerID = Integer.parseInt(currentLine[3]);
 					
 					// send to order-status object to query the status of the last order of a customer
+					orderStatus.getOrderStatus(customerWID, customerDID, customerID);
 					
 				} else if (inputLine.charAt(0) == 'S') {
 					// stock - level transaction --> 1 line
@@ -153,12 +156,14 @@ public class MainFile {
 					int noOfLastOrders = Integer.parseInt(currentLine[3]);
 					
 					// send to popular-item object to check 
+					popularItem.getPopularItem(warehouseID, districtID, noOfLastOrders);
 
 				} else if (inputLine.charAt(0) == 'T') {
 					// top - balance transaction --> 1 line
 					// 1 value only
 					
 					// send to top-balance transaction 
+					topBalance.getTopbalance();
 				} else {
 					System.out.println("xact wrong format");
 				}
