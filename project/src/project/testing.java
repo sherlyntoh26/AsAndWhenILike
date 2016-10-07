@@ -40,6 +40,9 @@ public class testing {
 		System.out.println("date2: " + endDate);
 		
 		System.out.println(String.format("%d", (endDate.getTime() - date.getTime())/1000));
+		
+		int dID = 10;
+		String dIDStr = String.format("%02d", dID);
+		System.out.println(dIDStr);
 	}
-
 }

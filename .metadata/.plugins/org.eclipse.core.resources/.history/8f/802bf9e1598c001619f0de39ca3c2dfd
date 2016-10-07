@@ -1,0 +1,57 @@
+
+package project;
+
+import java.math.BigDecimal;
+import java.sql.Timestamp;
+import com.datastax.driver.core.PreparedStatement;
+import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.Row;
+import com.datastax.driver.core.Session;
+
+public class DeliveryTransaction {
+	// private attributes
+	private Session session;
+	private PreparedStatement selectOrderStmt;
+	private PreparedStatement selectCustomerStmt;
+	private PreparedStatement updateOrderStmt;
+	private PreparedStatement updateCustomerStmt;
+	
+	public DeliveryTransaction(Connection connection) {
+		session = connection.getSession();
+		selectOrderStmt = session.prepare("SELECT min(o_id) as minOID, o_c_id, o_total_amount from orders where o_w_id = ? and o_d_id = ? and o_carrier_id = 0 allow filtering;");
+		selectCustomerStmt = session.prepare("select c_balance,c_delivery_cnt from customer where c_w_id = ? and c_d_id = ? and c_id = ? allow filtering;"); 
+		updateOrderStmt = session.prepare("update orders set o_carrier_id = ?,o_delivery_d = ? where o_w_id = ? and o_d_id = ? and o_id = ?;");
+		updateCustomerStmt = session.prepare("update customer set c_balance = ?,c_delivery_cnt = ? where c_w_id = ? and c_d_id = ? and c_id = ?;");	
+	}
+	
+	public void makeDelivery(int wID, int carrierID) {
+		for(int i=1;i<=10;i++){
+			ResultSet orderResult = session.execute(selectOrderStmt.bind(wID,i));
+			Row orderRow = orderResult.one();
+			int N = orderRow.getInt("minOID");
+			int o_c_id = orderRow.getInt("o_c_id"); 
+			float o_total_amount = orderRow.getFloat("o_total_amount");
+			
+			session.execute(updateOrderStmt.bind(carrierID,new Timestamp(System.currentTimeMillis()),wID,i,N));
+			
+			ResultSet customerResult = session.execute(selectCustomerStmt.bind(wID,i,o_c_id));
+			Row customerRow = customerResult.one();
+			float c_balance = customerRow.getDecimal("c_balance").floatValue();
+			int c_delivery_cnt = customerRow.getInt("c_delivery_cnt");
+			c_balance+=o_total_amount;
+			c_delivery_cnt+=1;
+			session.execute(updateCustomerStmt.bind(BigDecimal.valueOf(c_balance),c_delivery_cnt,wID,i,o_c_id));
+		}
+	}
+	
+	// for payment transaction running alone.
+	// debuggin use
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+		Connection connection = new Connection();
+		connection.connect("127.0.0.1", "d8");
+		DeliveryTransaction delivery = new DeliveryTransaction(connection);
+		delivery.makeDelivery(1, 1);
+	}
+	
+}

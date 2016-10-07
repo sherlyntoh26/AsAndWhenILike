@@ -1,0 +1,193 @@
+package project;
+
+import java.math.BigDecimal;
+import java.sql.Timestamp;
+import java.util.ArrayList;
+
+import com.datastax.driver.core.PreparedStatement;
+import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.Row;
+import com.datastax.driver.core.Session;
+
+public class NewOrderTransaction {
+	// private attributes
+	private Session session;
+	private PreparedStatement newOrderQuery;
+	private PreparedStatement newOrderLineQuery;
+	private PreparedStatement getStockQuery;
+	private PreparedStatement getCustomerQuery;
+	private PreparedStatement getWarehouseQuery;
+	private PreparedStatement updateWarehouseQuery;
+	private PreparedStatement updateInventoryQuery;
+
+	public NewOrderTransaction() {
+		// public constructor
+	}
+
+	// overload constructor
+	public NewOrderTransaction(Connection connection) {
+		session = connection.getSession();
+
+		// initiate query
+		newOrderQuery = session.prepare(
+				"INSERT INTO orders(o_w_id, o_d_id, o_id, o_c_id, o_carrier_id, o_ol_cnt, o_all_local, o_entry_d, o_total_amount, o_delivery_d) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);");
+		newOrderLineQuery = session.prepare(
+				"INSERT INTO orderLine(ol_w_id, ol_d_id, ol_o_id, ol_number, ol_i_id, ol_amount, ol_supply_w_id, ol_quantity, ol_dist_info, ol_i_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);");
+		getStockQuery = session.prepare(
+				"SELECT i_quantity, i_ytd, i_order_cnt, i_remote_cnt, i_price, i_name FROM inventory WHERE i_id = ? AND i_w_id = ?;");
+		getCustomerQuery = session.prepare(
+				"SELECT c_discount, c_last, c_credit FROM customer WHERE c_w_id = ? AND c_d_id = ? AND c_id =?;");
+		getWarehouseQuery = session.prepare("SELECT wdi_w_tax, ?, ? FROM warehouseDistrictInfo WHERE wdi_w_id = ?;");
+		updateWarehouseQuery = session.prepare("UPDATE warehouseDistrictInfo SET ? = ? WHERE wdi_w_id = ?;");
+		updateInventoryQuery = session.prepare(
+				"UPDATE inventory SET i_quantity = ?, i_ytd = ?, i_order_cnt = ?, i_remote_cnt = ? WHERE i_w_id = ? AND i_id = ?;");
+	}
+
+	public void newOrder(int cWID, int cDID, int cID, int numOfItems, int[] itemNumberArr, int[] sWarehouseID,
+			int[] quantities) {
+
+		String dNextOID;
+		String dTaxID;
+		String district;
+		if (cDID == 10) {
+			dNextOID = "wdi_d_next_o_id_10";
+			dTaxID = "wdi_d_tax_10";
+			district = "10";
+		} else {
+			dNextOID = "wdi_d_next_o_id_0" + cDID;
+			dTaxID = "wdi_d_tax_0" + cDID;
+			district = Integer.toString(cDID);
+		}
+
+		// Select next available order number D_NEXT_O_ID_## from
+		// warehouseDistrictInfo based on warehouseID
+		// String warehouseDistrictSelect = "SELECT wdi_w_tax," + dNextOID + ","
+		// + dTaxID + " FROM warehouseDistrictInfo WHERE wdi_w_id = " + cWID + ";";
+		ResultSet results = session.execute(getWarehouseQuery.bind(dNextOID, dTaxID, cWID));
+		Row rowWarehouse = results.one();
+		int nextOrderID = rowWarehouse.getInt(dNextOID);
+		float wTax = rowWarehouse.getDecimal("wdi_w_tax").floatValue();
+		float dTax = rowWarehouse.getDecimal(dTaxID).floatValue();
+
+		// Update D_NEXT_O_ID --> increase by 1
+		// session.execute(String.format("UPDATE warehouseDistrictInfo SET " +
+		// dNextOID + " = %d WHERE wdi_w_id = %d ;", nextOrderID + 1, cWID));
+		session.execute(updateWarehouseQuery.bind(dNextOID, nextOrderID + 1, cWID));
+
+		// create New order here
+		// check whether items are all local
+		int allLocal = 1;
+		float totalAmt = 0.0f;
+		ArrayList<String> arrayListOutput = new ArrayList<String>();
+		for (int i = 0; i < numOfItems; i++) {
+			results = session.execute(getStockQuery.bind(itemNumberArr[i], sWarehouseID[i]));
+			Row rowStock = results.one();
+			float stockQty = rowStock.getDecimal("i_quantity").floatValue();
+			float i_ytd = rowStock.getDecimal("i_ytd").floatValue();
+			int i_order_cnt = rowStock.getInt("i_order_cnt");
+			int i_remote_cnt = rowStock.getInt("i_remote_cnt");
+			float i_price = rowStock.getDecimal("i_price").floatValue();
+			String i_name = rowStock.getString("i_name");
+			float itemAmt = (quantities[i] * i_price);
+			totalAmt += itemAmt;
+
+			float adjustedQty = stockQty - quantities[i];
+			if (adjustedQty < 10) {
+				adjustedQty += 100;
+			}
+
+			if (sWarehouseID[i] != cWID) {
+				allLocal = 0;
+				i_remote_cnt += 1;
+			}
+
+			// session.execute(String.format("UPDATE inventory SET i_quantity =
+			// %f, i_ytd = %f, i_order_cnt = %d, i_remote_cnt = %d WHERE i_w_id
+			// = %d and i_id = %d;",
+			// adjustedQty, i_ytd + quantities[i], i_order_cnt + 1,
+			// i_remote_cnt, cWID, itemNumberArr[i]));
+			session.execute(updateInventoryQuery.bind(adjustedQty, i_ytd + quantities[i], i_order_cnt + 1, i_remote_cnt,
+					cWID, itemNumberArr[i]));
+
+			// insert into orderLine
+			session.execute(
+					newOrderLineQuery.bind(cWID, cDID, nextOrderID, i+1, itemNumberArr[i], BigDecimal.valueOf(itemAmt),
+							sWarehouseID[i], BigDecimal.valueOf(quantities[i]), "S_DIST" + district, i_name));
+
+			arrayListOutput.add(String.format("Item: %d | %s, Warehouse %d. Quantity: %d. Amount: %.2f, Stock: %.0f",
+					itemNumberArr[i], i_name, sWarehouseID[i], quantities[i], itemAmt, adjustedQty));
+		}
+
+		// calculate total amount
+		// insert into order table
+		results = session.execute(getCustomerQuery.bind(cWID, cDID, cID));
+		Row rowCustomer = results.one();
+		float cDiscount = rowCustomer.getDecimal("c_discount").floatValue();
+		String lastName = rowCustomer.getString("c_last");
+		String credit = rowCustomer.getString("c_credit");
+		totalAmt = totalAmt * (1 + dTax + wTax) * (1 - cDiscount);
+		// Date orderDate = new Date();
+		Timestamp orderDate = new Timestamp(System.currentTimeMillis());
+		session.execute(newOrderQuery.bind(cWID, cDID, nextOrderID, cID, null, BigDecimal.valueOf(numOfItems),
+				BigDecimal.valueOf(allLocal), orderDate, totalAmt, null));
+
+		// output for this transaction
+		System.out.println(String.format("Customer %s, %s, %.4f", lastName, credit, cDiscount));
+		System.out.println(String.format("Warehouse Tax: %.4f, District tax: %.4f", wTax, dTax));
+		System.out.println(String.format("Order Number: %d, Entry Date: %s", nextOrderID, orderDate));
+		System.out.println(String.format("Number of Item: %d, Total amount: %.2f", numOfItems, totalAmt));
+
+		for (String str : arrayListOutput) {
+			System.out.println(str);
+		}
+	}
+
+	// for new order transaction running alone.
+	// debugging use
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+
+		Connection connection = new Connection();
+		connection.connect("127.0.0.1", "project");
+		NewOrderTransaction newOrder = new NewOrderTransaction(connection);
+
+		// Date since = new Date();
+		// System.out.println(since);
+		// Timestamp ts = new Timestamp(0);
+		// Timestamp ts = new Timestamp(System.currentTimeMillis());
+		// System.out.println(ts);
+
+		// insert fake data into database
+		/*
+		 * PreparedStatement invStmt = newOrder.session.
+		 * prepare("INSERT INTO inventory(i_w_id, i_id, i_name, i_price, i_im_id, i_b_data, i_quantity, i_ytd, i_order_cnt, i_remote_cnt, i_dist_01, i_dist_02, i_dist_03, i_dist_04, i_dist_05, i_dist_06, i_dist_07, i_dist_08, i_dist_09, i_dist_10, i_data) VALUES(2, 39741, 'item1', 2, 1, 'bdata', 50, 0, 0, 0, 'dist1', 'dist2', 'dist3', 'dist4', 'dist5', 'dist6', 'dist7', 'dist8', 'dist9', 'dist10', 'sdata')"
+		 * ); newOrder.session.execute(invStmt.bind()); invStmt =
+		 * newOrder.session.
+		 * prepare("INSERT INTO inventory(i_w_id, i_id, i_name, i_price, i_im_id, i_b_data, i_quantity, i_ytd, i_order_cnt, i_remote_cnt, i_dist_01, i_dist_02, i_dist_03, i_dist_04, i_dist_05, i_dist_06, i_dist_07, i_dist_08, i_dist_09, i_dist_10, i_data) VALUES(2, 26821, 'item1', 2, 1, 'bdata', 50, 0, 0, 0, 'dist1', 'dist2', 'dist3', 'dist4', 'dist5', 'dist6', 'dist7', 'dist8', 'dist9', 'dist10', 'sdata')"
+		 * ); newOrder.session.execute(invStmt.bind());
+		 */
+
+		/*
+		 * PreparedStatement warehouseStmt = newOrder.session.
+		 * prepare("INSERT INTO warehouseDistrictInfo(wdi_w_id, wdi_w_tax, wdi_w_ytd, wdi_d_next_o_id_01, wdi_d_next_o_id_02, wdi_d_next_o_id_03, wdi_d_next_o_id_04, wdi_d_next_o_id_05, wdi_d_next_o_id_06, wdi_d_next_o_id_07, wdi_d_next_o_id_08, wdi_d_next_o_id_09, wdi_d_next_o_id_10, wdi_d_tax_01, wdi_d_tax_02, wdi_d_tax_03, wdi_d_tax_04, wdi_d_tax_05, wdi_d_tax_06, wdi_d_tax_07, wdi_d_tax_08, wdi_d_tax_09, wdi_d_tax_10, wdi_d_ytd_01, wdi_d_ytd_02, wdi_d_ytd_03, wdi_d_ytd_04, wdi_d_ytd_05, wdi_d_ytd_06, wdi_d_ytd_07, wdi_d_ytd_08, wdi_d_ytd_09, wdi_d_ytd_10) VALUES (2, 0.2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)"
+		 * ); newOrder.session.execute(warehouseStmt.bind());
+		 */
+
+		/*
+		 * PreparedStatement customerStmt = newOrder.session.
+		 * prepare("INSERT INTO customer(c_w_id, c_d_id, c_id, c_first, c_middle, c_last, c_street_1, c_street_2, c_city, c_state, c_zip, c_phone, c_since, c_credit, c_credit_lim, c_discount,c_balance, c_ytd_payment, c_payment_cnt, c_delivery_cnt, c_data, c_w_name, c_d_name) VALUES(1, 1, 331, 'first', 'middle', 'last', 'street1', 'street2', 'city', 'state', 'zip', 'phone', '2016-03-15 00:00:00', 'GC', 50000, 0.3059, -10, 10, 1, 0, 'data', 'warehouseName', 'districtName')"
+		 * ); newOrder.session.execute(customerStmt.bind()); //OR String
+		 * customerStmt =
+		 * "INSERT INTO customer(c_w_id, c_d_id, c_id, c_first, c_middle, c_last, c_street_1, c_street_2, c_city, c_state, c_zip, c_phone, c_since, c_credit, c_credit_lim, c_discount,c_balance, c_ytd_payment, c_payment_cnt, c_delivery_cnt, c_data, c_w_name, c_d_name) VALUES(1, 1, 331, 'first', 'middle', 'last', 'street1', 'street2', 'city', 'state', 'zip', 'phone', '2016-03-15 00:00:00+0000', 'GC', 50000, 0.3059, -10, 10, 1, 0, 'data', 'warehouseName', 'districtName')"
+		 * ; newOrder.session.execute(customerStmt);
+		 */
+
+		// create transaction objects here
+		int[] itemID = { 39741, 26821 };
+		int[] supplyWID = { 2, 1 };
+		int[] quantity = { 5, 2 };
+		newOrder.newOrder(1, 1, 331, 2, itemID, supplyWID, quantity);
+		System.out.println("IM SO DONE HERE");
+	}
+
+}

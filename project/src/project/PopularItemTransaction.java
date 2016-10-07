@@ -11,7 +11,7 @@ import com.datastax.driver.core.Session;
 
 public class PopularItemTransaction {
 	private Session session;
-	private PreparedStatement selectWarehouseStmt;
+	//private PreparedStatement selectWarehouseStmt;
 	private PreparedStatement selectOrdersStmt;
 	private PreparedStatement selectCustomerStmt;
 	private PreparedStatement selectOrderLineStmt;
@@ -22,7 +22,7 @@ public class PopularItemTransaction {
 	
 	public PopularItemTransaction(Connection connection){
 		this.session = connection.getSession();
-		selectWarehouseStmt = session.prepare("SELECT ? FROM warehouseDistrictInfo WHERE wdi_w_id = ?;");
+		//selectWarehouseStmt = session.prepare("SELECT ? FROM warehouseDistrictInfo WHERE wdi_w_id = ?;");
 		selectOrdersStmt = session.prepare("SELECT o_id, o_entry_d, o_c_id FROM orders WHERE o_w_id = ? AND o_d_id = ? AND o_id >= ?;");
 		selectCustomerStmt = session.prepare("SELECT c_first, c_middle, c_last FROM customer WHERE c_w_id = ? AND c_d_id = ? AND c_id = ?;");
 		selectOrderLineStmt = session.prepare("SELECT ol_i_name, ol_quantity FROM orderLine WHERE ol_w_id = ? AND ol_d_id = ? AND ol_o_id = ? AND ol_number >= 1;");
@@ -40,7 +40,9 @@ public class PopularItemTransaction {
 			nextID = "wdi_d_next_o_id_0" + dID;
 		}
 		
-		ResultSet warehouseResult = session.execute(selectWarehouseStmt.bind(nextID, wID));
+		//ResultSet warehouseResult = session.execute(selectWarehouseStmt.bind(nextID, wID));
+		String warehouseStmt = "SELECT %s FROM warehouseDistrictInfo WHERE wdi_w_id = %d;";
+		ResultSet warehouseResult = session.execute(String.format(warehouseStmt, nextID, wID));
 		int nextOID = warehouseResult.one().getInt(nextID);
 		
 		ResultSet ordersResult = session.execute(selectOrdersStmt.bind(wID, dID, nextOID - noOfLastOrders));

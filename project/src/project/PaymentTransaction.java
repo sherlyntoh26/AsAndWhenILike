@@ -10,8 +10,8 @@ import com.datastax.driver.core.Session;
 public class PaymentTransaction {
 	// private attributes
 	private Session session;
-	private PreparedStatement selectWarehouseStmt;
-	private PreparedStatement updateWarehouseStmt;
+	//private PreparedStatement selectWarehouseStmt;
+	//private PreparedStatement updateWarehouseStmt;
 	private PreparedStatement selectCustomerStmt;
 	private PreparedStatement updateCustomerStmt;
 	private PreparedStatement selectWarehouseDistrictStmt;
@@ -22,10 +22,10 @@ public class PaymentTransaction {
 
 	public PaymentTransaction(Connection connection) {
 		session = connection.getSession();
-		selectWarehouseStmt = session.prepare("SELECT wdi_w_ytd, ? FROM warehouseDistrictInfo WHERE wdi_w_id = ?;");
-		updateWarehouseStmt = session.prepare("UPDATE warehouseDistrictInfo SET wdi_w_ytd = ?, ? = ? WHERE wdi_w_id = ?;");
+		//selectWarehouseStmt = session.prepare("SELECT wdi_w_ytd, ? FROM warehouseDistrictInfo WHERE wdi_w_id = ?;");
+		//updateWarehouseStmt = session.prepare("UPDATE warehouseDistrictInfo SET wdi_w_ytd = ?, ? = ? WHERE wdi_w_id = ?;");
 		selectCustomerStmt = session.prepare("SELECT c_first, c_middle, c_last, c_street_1, c_street_2, c_city, c_state, c_zip, c_phone, c_since, c_credit, c_credit_lim, c_discount, c_balance, c_ytd_payment, c_payment_cnt FROM customer WHERE c_w_id = ? AND c_d_id = ? AND c_id = ?;");
-		updateCustomerStmt = session.prepare("UPDATE customer SET c_balence = ?, c_ytd_payment = ?, c_payment_cnt = ? WHERE c_w_id = ? AND c_d_id = ? AND c_id = ?;");
+		updateCustomerStmt = session.prepare("UPDATE customer SET c_balance = ?, c_ytd_payment = ?, c_payment_cnt = ? WHERE c_w_id = ? AND c_d_id = ? AND c_id = ?;");
 		selectWarehouseDistrictStmt = session.prepare("SELECT wd_w_street_1, wd_w_street_2, wd_w_city, wd_w_state, wd_w_zip, wd_d_street_1, wd_d_street_2, wd_d_city, wd_d_state, wd_d_zip FROM warehouseDistrict WHERE wd_w_id = ? AND wd_d_id = ?;");
 	}
 
@@ -39,13 +39,17 @@ public class PaymentTransaction {
 		}
 
 		// update warehouseDistrictInfo by increasing wdi_w_ytd and wdi_d_ytd_# by payment
-		ResultSet warehouseResult = session.execute(selectWarehouseStmt.bind(wdi_d_ytd, cWID));
+		String warehouseStmt = "SELECT wdi_w_ytd, %s FROM warehouseDistrictInfo WHERE wdi_w_id = %d;";
+		ResultSet warehouseResult = session.execute(String.format(warehouseStmt, wdi_d_ytd, cWID));
+		//ResultSet warehouseResult = session.execute(selectWarehouseStmt.bind(wdi_d_ytd, cWID));
 		Row warehouseRow = warehouseResult.one();
 		float w_ytd = warehouseRow.getDecimal("wdi_w_ytd").floatValue();
 		float d_ytd = warehouseRow.getDecimal(wdi_d_ytd).floatValue();
 		w_ytd += payment;
 		d_ytd += payment;
-		session.execute(updateWarehouseStmt.bind(BigDecimal.valueOf(w_ytd), wdi_d_ytd, BigDecimal.valueOf(d_ytd), cWID));
+		String updateWarehouseStmt = "UPDATE warehouseDistrictInfo SET wdi_w_ytd = %.2f, %s = %.2f WHERE wdi_w_id = %d;";
+		session.execute(String.format(updateWarehouseStmt, BigDecimal.valueOf(w_ytd), wdi_d_ytd, BigDecimal.valueOf(d_ytd), cWID));
+		//session.execute(updateWarehouseStmt.bind(BigDecimal.valueOf(w_ytd), wdi_d_ytd, BigDecimal.valueOf(d_ytd), cWID));
 		
 		// update customer --> decrease c_balance by payment, increase c_ytd_payment by payment, increase c_payment_cnt by 1
 		ResultSet customerResult = session.execute(selectCustomerStmt.bind(cWID, cDID, cID));
@@ -56,7 +60,7 @@ public class PaymentTransaction {
 		c_balance -= payment;
 		c_ytd_payment += payment;
 		c_payment_cnt +=1;
-		session.execute(updateCustomerStmt.bind(c_balance, c_ytd_payment, c_payment_cnt, cWID, cDID, cID));
+		session.execute(updateCustomerStmt.bind(BigDecimal.valueOf(c_balance), c_ytd_payment, c_payment_cnt, cWID, cDID, cID));
 		
 		ResultSet warehouseDistrictResult = session.execute(selectWarehouseDistrictStmt.bind(cWID, cDID));
 		Row wdRow = warehouseDistrictResult.one();
@@ -77,8 +81,12 @@ public class PaymentTransaction {
 		Connection connection = new Connection();
 		connection.connect("127.0.0.1", "project");
 		PaymentTransaction payment = new PaymentTransaction(connection);
-
-		payment.makePayment(1, 1, 331, 1.02f);
+		
+		// insert fake data
+		//PreparedStatement warehouseStmt = payment.session.prepare("INSERT INTO warehouseDistrict(wd_w_id, wd_d_id, wd_w_name, wd_w_street_1, wd_w_street_2, wd_w_city, wd_w_state, wd_w_zip, wd_d_name, wd_d_street_1, wd_d_street_2, wd_d_city, wd_d_state, wd_d_zip) VALUES (1, 1, 'warehouse name', 'warehouse street 1', 'warehouse street 2', 'warehouse city', 'warehouse state', 'warehouse zip', 'district name', 'district street 1', 'district street 2', 'district city', 'district state', 'district zip');");
+		//payment.session.execute(warehouseStmt.bind());
+		
+		payment.makePayment(1, 1, 331, 10.00f);
 	}
 
 }

@@ -1,0 +1,69 @@
+package project;
+
+import java.util.List;
+
+import com.datastax.driver.core.PreparedStatement;
+import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.Row;
+import com.datastax.driver.core.Session;
+
+public class OrderStatusTransaction {
+	private Session session;
+	private PreparedStatement selectCustomerStmt;
+	private PreparedStatement selectOrderStmt;
+	private PreparedStatement selectOrderLineStmt;
+
+	public OrderStatusTransaction() {
+		// public constructor
+	}
+
+	public OrderStatusTransaction(Connection connection) {
+		session = connection.getSession();
+		
+		selectCustomerStmt = session.prepare("SELECT c_first, c_middle, c_last, c_balance FROM customer WHERE c_w_id = ? AND c_d_id = ? AND c_id = ?;");
+		selectOrderStmt = session.prepare("SELECT o_id, o_entry_d, o_carrier_id, o_delivery_d FROM orders WHERE o_w_id = ? AND o_d_id = ? AND o_c_id = ?;");
+		selectOrderLineStmt = session.prepare("SELECT ol_i_id, ol_supply_w_id, ol_quantity, ol_amount FROM orderLine WHERE ol_w_id = ? AND ol_d_id = ? AND ol_o_id = ?;");
+	}
+	
+	public void getOrderStatus(int cWID, int cDID, int cID){
+		
+		ResultSet customerResult = session.execute(selectCustomerStmt.bind(cWID, cDID, cID));
+		Row customerRow = customerResult.one();
+		String deliveryDate = customerRow.getTimestamp("o_delivery_d").toString();
+		System.out.println(String.format("Customer's Name: (%s, %s, %s) | Balance: %.2f", customerRow.getString("c_first"), customerRow.getString("c_middle"), customerRow.getString("c_last"), customerRow.getDecimal("c_balance").floatValue()));
+		
+		ResultSet orderResult = session.execute(selectOrderStmt.bind(cWID, cDID, cID));
+		
+		List<Row> rows = orderResult.all();
+		int index = 0;
+		int o_id=-1;
+		for(int i=0; i<rows.size(); i++){
+			if(rows.get(i).getInt("o_id") > o_id){
+				index = i;
+				o_id = rows.get(i).getInt("o_id");
+			}
+		}
+		
+		
+		Row orderRow = rows.get(index);
+		int orderId = orderRow.getInt("o_id");
+		System.out.println(String.format("Last order number: %d | Entry date & time: %s | Carrier ID: %d", orderId, orderRow.getTimestamp("o_entry_d").toString(), orderRow.getInt("o_carrier_id")));
+		
+		System.out.println("Ordered Item(s)");
+		ResultSet orderLineResult = session.execute(selectOrderLineStmt.bind(cWID, cDID, orderId));
+		List<Row> orderLineRow = orderLineResult.all();
+		for(int i=0; i < orderLineRow.size(); i++){
+			Row currentRow = orderLineRow.get(i);
+			System.out.println(String.format("Item No.: %d | Supplying Warehouse No.: %d | quantity: %.0f | Total price: %.2f | Delivery date & time", currentRow.getInt("ol_i_id"), currentRow.getInt("ol_supply_w_id"), currentRow.getDecimal("ol_quantity"), currentRow.getDecimal("ol_amount"),deliveryDate));
+		}
+	}
+	
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+
+		Connection connection = new Connection();
+		connection.connect("127.0.0.1", "project");
+		OrderStatusTransaction orderStatus = new OrderStatusTransaction(connection);
+		orderStatus.getOrderStatus(1, 1, 331);
+	}
+}

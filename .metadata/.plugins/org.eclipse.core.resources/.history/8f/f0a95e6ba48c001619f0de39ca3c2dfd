@@ -1,0 +1,56 @@
+package project;
+
+import java.math.BigDecimal;
+
+import com.datastax.driver.core.PreparedStatement;
+import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.Row;
+import com.datastax.driver.core.Session;
+
+public class StockLevelTransaction {
+	private Session session;
+	private PreparedStatement selectOrderLine;
+	private PreparedStatement selectInventory;
+	private PreparedStatement selectWarehouse;
+	
+	public StockLevelTransaction(Connection connection) {
+		session = connection.getSession();
+		selectOrderLine = session.prepare("SELECT ol_i_id from orderline where ol_w_id = ? and ol_d_id = ? and ol_o_id > ? and ol_o_id < ?;");
+		selectInventory = session.prepare("SELECT i_quantity from inventory where i_w_id = ? and i_id = ? ;");
+		selectWarehouse = session.prepare("SELECT wdi_d_next_o_id_? from warehouseDistrictInfo WHERE wdi_w_id = ?;");
+	}
+	
+	public void stockLevel(int wID,int dID,int T,int L) {
+		String dIDStr = String.format("%02d", dID);
+
+		String str = "wdi_d_next_o_id_"+dIDStr;
+		System.out.println("the column to be retrieved is : "+str);
+		//String query = "SELECT  wdi_d_next_o_id_"+dIDStr+" from warehousedistrictinfo where wdi_w_id ="+wID+";";
+		//ResultSet warehouseDistrictInfoResult = session.execute(query);
+		ResultSet warehouseDistrictInfoResult = session.execute(selectWarehouse.bind(dIDStr, wID));
+		Row warehouseDistrictInfoRow = warehouseDistrictInfoResult.one();
+		
+		int N = warehouseDistrictInfoRow.getInt("wdi_d_next_o_id_"+dIDStr);
+		System.out.println("the next oid is :"+N);
+		ResultSet orderLineResult = session.execute(selectOrderLine.bind(wID,dID,(N-L-1),N));
+		int count = 0;
+		for (Row row : orderLineResult) {
+			System.out.println("the value ol_i_id : "+(int) (row.getInt("ol_i_id")));
+			ResultSet inventoryResult = session.execute(selectInventory.bind(wID,row.getInt("ol_i_id")));
+			Row inventoryRow = inventoryResult.one();
+			if((inventoryRow.getDecimal("i_quantity")).floatValue() < T){
+				count++;
+			}
+		}
+		System.out.println("Number of items whose quantity is less than the threshold is :"+count);;
+	}
+	
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+		Connection connection = new Connection();
+		connection.connect("127.0.0.1", "d8");
+		StockLevelTransaction stock = new StockLevelTransaction(connection);
+		stock.stockLevel(1, 1, 14, 22);
+	}
+
+}

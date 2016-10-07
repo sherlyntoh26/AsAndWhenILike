@@ -32,4 +32,12 @@ public class TopBalanceTransaction {
 			noOfCust++;
 		}
 	}
+	
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+		Connection connection = new Connection();
+		connection.connect("127.0.0.1", "project");
+		TopBalanceTransaction topBalance = new TopBalanceTransaction(connection);
+		topBalance.getTopbalance();
+	}
 }
