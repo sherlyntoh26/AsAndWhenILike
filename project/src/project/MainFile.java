@@ -3,6 +3,7 @@ package project;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.util.Date;
 
 public class MainFile {
 	private boolean usingD8;
@@ -34,17 +35,23 @@ public class MainFile {
 		}
 		
 		String[] arrayIpAdd = new String[3];
-		arrayIpAdd[0] = "";
-		arrayIpAdd[1] = "";
-		arrayIpAdd[2] = "";
+		arrayIpAdd[0] = "192.168.48.249";
+		arrayIpAdd[1] = "192.168.48.250";
+		arrayIpAdd[2] = "192.168.48.251";
 		int noNum = 0;
 
 		for (int i = 0; i < transactionFileNumber; i++) {
 			
 			MainFile mf = new MainFile(usingD8, dbKeySpace, noOfNodes, arrayIpAdd[noNum], i);
-			mf.runTransactions();
+			Thread tnew = new Thread(new Runnable(){
+				@Override
+				public void run(){
+					mf.runTransactions();
+				}
+			});
+			tnew.start();
 			noNum++;
-			if(noNum == 3){
+			if(noNum == noOfNodes){
 				noNum = 0;
 			}
 		}
@@ -60,7 +67,8 @@ public class MainFile {
 
 	public void runTransactions() {
 		// do timing here. 
-		
+		int noOfTransaction = 0;
+		Date dateStart = new Date();
 		
 		// get connection
 		Connection connection = new Connection();
@@ -72,7 +80,8 @@ public class MainFile {
 		OrderStatusTransaction orderStatus = new OrderStatusTransaction(connection);
 		PopularItemTransaction popularItem = new PopularItemTransaction(connection);
 		TopBalanceTransaction topBalance = new TopBalanceTransaction(connection);
-		
+		DeliveryTransaction delivery = new DeliveryTransaction(connection);
+		StockLevelTransaction stockLvl = new StockLevelTransaction(connection);
 
 		// get transaction file.
 		String path = "../data/D%d-xact/%d.txt";
@@ -108,7 +117,8 @@ public class MainFile {
 					}
 					// send to Order object to do the insertion to DB
 					order.newOrder(wid, did, cid, noOfItem, itemID, supplyWID, quantity);
-
+					noOfTransaction +=1;
+					
 				} else if (inputLine.charAt(0) == 'P') {
 					// payment transaction --> 1 line
 					// 5 comma: P, C_W_ID, C_D_ID, C_ID, PAYMENT
@@ -119,7 +129,7 @@ public class MainFile {
 					
 					// send to Payment object to do the update of customer in DB
 					payment.makePayment(customerWID, customerDID, customerID, paymentAmt);
-
+					noOfTransaction +=1;
 				} else if (inputLine.charAt(0) == 'D') {
 					// delivery transaction --> 1 line
 					// 3 comma: D, W_ID, CARRIER_ID
@@ -127,7 +137,8 @@ public class MainFile {
 					int carrierID = Integer.parseInt(currentLine[2]);
 					
 					// send to delivery object to do the update of delivery in DB
-
+					delivery.makeDelivery(warehouseID, carrierID);
+					noOfTransaction +=1;
 				} else if (inputLine.charAt(0) == 'O') {
 					// order - status transaction --> 1 line
 					// 4 comma: O, C_W_ID, C_D_ID, C_ID
@@ -137,7 +148,7 @@ public class MainFile {
 					
 					// send to order-status object to query the status of the last order of a customer
 					orderStatus.getOrderStatus(customerWID, customerDID, customerID);
-					
+					noOfTransaction +=1;
 				} else if (inputLine.charAt(0) == 'S') {
 					// stock - level transaction --> 1 line
 					// 5 comma: S, W_ID, D_ID, T, L
@@ -147,7 +158,8 @@ public class MainFile {
 					int noOfLastOrders = Integer.parseInt(currentLine[4]);
 					
 					// send to stock-level object to check stock level below specified threshold
-
+					stockLvl.stockLevel(warehouseID, districtID, stockThreshold, noOfLastOrders);
+					noOfTransaction +=1;
 				} else if (inputLine.charAt(0) == 'I') {
 					// popular - item transaction --> 1 line
 					// 4 comma: I, W_ID, D_ID, L
@@ -157,13 +169,14 @@ public class MainFile {
 					
 					// send to popular-item object to check 
 					popularItem.getPopularItem(warehouseID, districtID, noOfLastOrders);
-
+					noOfTransaction +=1;
 				} else if (inputLine.charAt(0) == 'T') {
 					// top - balance transaction --> 1 line
 					// 1 value only
 					
 					// send to top-balance transaction 
 					topBalance.getTopbalance();
+					noOfTransaction +=1;
 				} else {
 					System.out.println("xact wrong format");
 				}
@@ -174,8 +187,18 @@ public class MainFile {
 
 		} catch (Exception e) {
 			e.printStackTrace();
+		} finally{
+			//after read file --> close connection
+			connection.close();
+			Date dateEnd = new Date();
+			long elapsedTime = (dateEnd.getTime() - dateStart.getTime())/1000;
+			float throughput = elapsedTime/noOfTransaction;
+			
+			// print 1 file information
+			System.out.println(String.format("Total number of transactions processed: %d", noOfTransaction));
+			System.out.println(String.format("Total elapsed time for processing transactions: %d seconds", elapsedTime));
+			System.out.println(String.format("Transaction throughput: %.2f", throughput));
 		}
-		//after read file --> close connection
-		connection.close();
+		
 	}
 }
