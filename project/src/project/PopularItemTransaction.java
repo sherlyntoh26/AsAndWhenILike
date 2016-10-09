@@ -11,7 +11,6 @@ import com.datastax.driver.core.Session;
 
 public class PopularItemTransaction {
 	private Session session;
-	//private PreparedStatement selectWarehouseStmt;
 	private PreparedStatement selectOrdersStmt;
 	private PreparedStatement selectCustomerStmt;
 	private PreparedStatement selectOrderLineStmt;
@@ -22,9 +21,8 @@ public class PopularItemTransaction {
 	
 	public PopularItemTransaction(Connection connection){
 		this.session = connection.getSession();
-		//selectWarehouseStmt = session.prepare("SELECT ? FROM warehouseDistrictInfo WHERE wdi_w_id = ?;");
 		selectOrdersStmt = session.prepare("SELECT o_id, o_entry_d, o_c_id FROM orders WHERE o_w_id = ? AND o_d_id = ? AND o_id >= ?;");
-		selectCustomerStmt = session.prepare("SELECT c_first, c_middle, c_last FROM customer WHERE c_w_id = ? AND c_d_id = ? AND c_id = ?;");
+		selectCustomerStmt = session.prepare("SELECT c_first, c_middle, c_last FROM customer WHERE c_w_id = ? AND c_d_id = ? AND c_id =?;");
 		selectOrderLineStmt = session.prepare("SELECT ol_i_name, ol_quantity FROM orderLine WHERE ol_w_id = ? AND ol_d_id = ? AND ol_o_id = ? AND ol_number >= 1;");
 	}
 	
@@ -40,7 +38,6 @@ public class PopularItemTransaction {
 			nextID = "wdi_d_next_o_id_0" + dID;
 		}
 		
-		//ResultSet warehouseResult = session.execute(selectWarehouseStmt.bind(nextID, wID));
 		String warehouseStmt = "SELECT %s FROM warehouseDistrictInfo WHERE wdi_w_id = %d;";
 		ResultSet warehouseResult = session.execute(String.format(warehouseStmt, nextID, wID));
 		int nextOID = warehouseResult.one().getInt(nextID);
@@ -51,8 +48,9 @@ public class PopularItemTransaction {
 		
 		for(int i=0; i<ordersRow.size(); i++){
 			Row currentRow = ordersRow.get(i);
+			int cID = currentRow.getInt("o_c_id");
 			
-			ResultSet customerResult = session.execute(selectCustomerStmt.bind(wID, dID, currentRow.getInt("o_c_id")));
+			ResultSet customerResult = session.execute(selectCustomerStmt.bind(wID, dID, cID));
 			System.out.println(String.format("Order No.: %d | Entry date & time: %s", currentRow.getInt("o_id"), currentRow.getTimestamp("o_entry_d").toString()));
 			System.out.println(String.format("Customer Name: (%s, %s, %s)", customerResult.one().getString("c_first"), customerResult.one().getString("c_middle"), customerResult.one().getString("c_last")));
 			
@@ -94,8 +92,15 @@ public class PopularItemTransaction {
 		System.out.println("All popular item(s)");
 		for(String itemName : allPopItem.keySet()){
 			int value = allPopItem.get(itemName);
-			float percentage = (value/noOfLastOrders)*100;
-			System.out.println(String.format("Item Name: %s | Percentage: %.2f", itemName, percentage));
+			float percentage = ((float)value/noOfLastOrders)*100f;
+			System.out.println(String.format("Item Name: %s | Percentage: %.2f%%", itemName, percentage));
 		}	
+	}
+	
+	public static void main(String[] args){
+		Connection connection = new Connection();
+		connection.connect("127.0.0.1", "project");
+		PopularItemTransaction popularItem = new PopularItemTransaction(connection);
+		popularItem.getPopularItem(1, 1, 2);
 	}
 }

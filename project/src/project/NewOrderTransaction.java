@@ -16,8 +16,6 @@ public class NewOrderTransaction {
 	private PreparedStatement newOrderLineQuery;
 	private PreparedStatement getStockQuery;
 	private PreparedStatement getCustomerQuery;
-	//private PreparedStatement getWarehouseQuery;
-	//private PreparedStatement updateWarehouseQuery;
 	private PreparedStatement updateInventoryQuery;
 
 	public NewOrderTransaction() {
@@ -37,8 +35,6 @@ public class NewOrderTransaction {
 				"SELECT i_quantity, i_ytd, i_order_cnt, i_remote_cnt, i_price, i_name FROM inventory WHERE i_id = ? AND i_w_id = ?;");
 		getCustomerQuery = session.prepare(
 				"SELECT c_discount, c_last, c_credit FROM customer WHERE c_w_id = ? AND c_d_id = ? AND c_id =?;");
-		//getWarehouseQuery = session.prepare("SELECT wdi_w_tax, ?, ? FROM warehouseDistrictInfo WHERE wdi_w_id = ?;");
-		//updateWarehouseQuery = session.prepare("UPDATE warehouseDistrictInfo SET ? = ? WHERE wdi_w_id = ?;");
 		updateInventoryQuery = session.prepare(
 				"UPDATE inventory SET i_quantity = ?, i_ytd = ?, i_order_cnt = ?, i_remote_cnt = ? WHERE i_w_id = ? AND i_id = ?;");
 	}
@@ -63,7 +59,6 @@ public class NewOrderTransaction {
 		// warehouseDistrictInfo based on warehouseID
 		String warehouseDistrictSelect = "SELECT wdi_w_tax," + dNextOID + "," + dTaxID + " FROM warehouseDistrictInfo WHERE wdi_w_id = " + cWID + ";";
 		ResultSet results = session.execute(warehouseDistrictSelect);
-		//ResultSet results = session.execute(getWarehouseQuery.bind(dNextOID, dTaxID, cWID));
 		Row rowWarehouse = results.one();
 		int nextOrderID = rowWarehouse.getInt(dNextOID);
 		float wTax = rowWarehouse.getDecimal("wdi_w_tax").floatValue();
@@ -71,8 +66,7 @@ public class NewOrderTransaction {
 
 		// Update D_NEXT_O_ID --> increase by 1
 		session.execute(String.format("UPDATE warehouseDistrictInfo SET " + dNextOID + " = %d WHERE wdi_w_id = %d ;", nextOrderID + 1, cWID));
-		//session.execute(updateWarehouseQuery.bind(dNextOID, nextOrderID + 1, cWID));
-
+		
 		// create New order here
 		// check whether items are all local
 		int allLocal = 1;
@@ -100,11 +94,6 @@ public class NewOrderTransaction {
 				i_remote_cnt += 1;
 			}
 
-			// session.execute(String.format("UPDATE inventory SET i_quantity =
-			// %f, i_ytd = %f, i_order_cnt = %d, i_remote_cnt = %d WHERE i_w_id
-			// = %d and i_id = %d;",
-			// adjustedQty, i_ytd + quantities[i], i_order_cnt + 1,
-			// i_remote_cnt, cWID, itemNumberArr[i]));
 			session.execute(updateInventoryQuery.bind(BigDecimal.valueOf(adjustedQty), BigDecimal.valueOf(i_ytd + quantities[i]), i_order_cnt + 1, i_remote_cnt,
 					cWID, itemNumberArr[i]));
 
@@ -125,7 +114,6 @@ public class NewOrderTransaction {
 		String lastName = rowCustomer.getString("c_last");
 		String credit = rowCustomer.getString("c_credit");
 		totalAmt = totalAmt * (1 + dTax + wTax) * (1 - cDiscount);
-		// Date orderDate = new Date();
 		Timestamp orderDate = new Timestamp(System.currentTimeMillis());
 		session.execute(newOrderQuery.bind(cWID, cDID, nextOrderID, cID, 0, BigDecimal.valueOf(numOfItems),
 				BigDecimal.valueOf(allLocal), orderDate, totalAmt, null));
@@ -184,7 +172,7 @@ public class NewOrderTransaction {
 		// create transaction objects here
 		int[] itemID = { 39741, 26821 };
 		int[] supplyWID = { 1, 1 };
-		int[] quantity = { 2, 8 };
+		int[] quantity = { 8, 8 };
 		newOrder.newOrder(1, 1, 331, 2, itemID, supplyWID, quantity);
 		System.out.println("IM SO DONE HERE");
 	}

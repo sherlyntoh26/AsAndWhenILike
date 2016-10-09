@@ -21,7 +21,7 @@ public class OrderStatusTransaction {
 		session = connection.getSession();
 		
 		selectCustomerStmt = session.prepare("SELECT c_first, c_middle, c_last, c_balance FROM customer WHERE c_w_id = ? AND c_d_id = ? AND c_id = ?;");
-		selectOrderStmt = session.prepare("SELECT o_id, o_entry_d, o_carrier_id, o_delivery_d FROM orders WHERE o_w_id = ? AND o_d_id = ? AND o_c_id = ? allow filtering;");
+		selectOrderStmt = session.prepare("SELECT max(o_id) as maxOID, o_entry_d, o_carrier_id, o_delivery_d FROM orders WHERE o_w_id = ? AND o_d_id = ? AND o_c_id = ? allow filtering;");
 		selectOrderLineStmt = session.prepare("SELECT ol_i_id, ol_supply_w_id, ol_quantity, ol_amount FROM orderLine WHERE ol_w_id = ? AND ol_d_id = ? AND ol_o_id = ?;");
 	}
 	
@@ -32,20 +32,8 @@ public class OrderStatusTransaction {
 		System.out.println(String.format("Customer's Name: (%s, %s, %s) | Balance: %.2f", customerRow.getString("c_first"), customerRow.getString("c_middle"), customerRow.getString("c_last"), customerRow.getDecimal("c_balance").floatValue()));
 		
 		ResultSet orderResult = session.execute(selectOrderStmt.bind(cWID, cDID, cID));
-		
-		List<Row> rows = orderResult.all();
-		int index = 0;
-		int o_id=-1;
-		for(int i=0; i<rows.size(); i++){
-			if(rows.get(i).getInt("o_id") > o_id){
-				index = i;
-				o_id = rows.get(i).getInt("o_id");
-			}
-		}
-		
-		
-		Row orderRow = rows.get(index);
-		int orderId = orderRow.getInt("o_id");
+		Row orderRow = orderResult.one();
+		int orderId = orderRow.getInt("maxOID");
 		String deliveryDate="";
 		try{
 			deliveryDate = orderRow.getTimestamp("o_delivery_d").toString();
