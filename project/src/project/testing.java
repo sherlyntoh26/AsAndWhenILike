@@ -50,3 +50,8 @@ public class testing {
 		System.out.println("first" + result.one().getString("c_first"));
 	}
 }
+// the top one jus ignore. i testing only. 
+// start from the string stmt ...
+// this one can run & get result u see popularItemTransaction will miss row0 anot ah, tested woud;nt right nono. .one() will take the 1st row HAHAH, so it returned "first" only for result.one?"
+// nop. it will return rows of "c_first, c_middle, c_last" --> but with condition it will only return 1 row. so .one() take the 1st row. thn getString("c_first") take the value in this column
+//kk u see t

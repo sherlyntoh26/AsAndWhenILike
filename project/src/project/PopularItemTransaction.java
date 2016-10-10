@@ -25,15 +25,13 @@ public class PopularItemTransaction {
 		selectOrdersStmt = session
 				.prepare("SELECT o_id, o_entry_d, o_c_id FROM orders WHERE o_w_id = ? AND o_d_id = ? AND o_id >= ?;");
 		selectCustomerStmt = session
-				.prepare("SELECT c_first, c_middle, c_last FROM customer WHERE c_w_id = ? AND c_d_id = ? AND c_id = ?;");
+				.prepare("SELECT c_first, c_middle, c_last FROM customer WHERE c_w_id = ? AND c_d_id = ? AND c_id =?;");
 		selectOrderLineStmt = session.prepare(
 				"SELECT ol_i_name, ol_quantity FROM orderLine WHERE ol_w_id = ? AND ol_d_id = ? AND ol_o_id = ? AND ol_number >= 1;");
 	}
 
 	public void getPopularItem(int wID, int dID, int noOfLastOrders) {
 
-		
-		
 		System.out.println(String.format("District Identifier: (%d, %d)", wID, dID));
 		System.out.println(String.format("Number of last orders to be examined: %d", noOfLastOrders));
 
@@ -55,18 +53,18 @@ public class PopularItemTransaction {
 		for (int i = 0; i < ordersRow.size(); i++) {
 			Row currentRow = ordersRow.get(i);
 			int cID = currentRow.getInt("o_c_id");
+						
+//			String stmt = "SELECT c_first, c_middle, c_last FROM customer WHERE c_w_id = %d AND c_d_id = %d AND c_id =%d;";
+//			ResultSet result = session.execute(String.format(stmt, wID, dID, cID));//next~next~
+//			Row customerRow = result.one();
+//			System.out.println("first " + customerRow.getString("c_first")); // --> this one work
 			
-//			
-//			String stmt = "SELECT c_first, c_middle, c_last FROM customer WHERE c_w_id = 1 AND c_d_id = 1 AND c_id =123;";
-//			ResultSet result = session.execute(stmt);
-//			System.out.println("first " + result.one().getString("c_first"));
-
 			ResultSet customerResult = session.execute(selectCustomerStmt.bind(wID, dID, cID));
-			//ResultSet customerResult = session.execute(selectCustomerStmt.bind());
+			Row customerRow = customerResult.one();
 			System.out.println(String.format("Order No.: %d | Entry date & time: %s", currentRow.getInt("o_id"),
 					currentRow.getTimestamp("o_entry_d").toString()));
-			System.out.println(String.format("Customer Name: (%s, %s, %s)", customerResult.one().getString("c_first"),
-					customerResult.one().getString("c_middle"), customerResult.one().getString("c_last")));
+			System.out.println(String.format("Customer Name: (%s, %s, %s)", customerRow.getString("c_first"),
+					customerRow.getString("c_middle"), customerRow.getString("c_last")));
 
 			ResultSet orderLineResult = session.execute(selectOrderLineStmt.bind(wID, dID, currentRow.getInt("o_id")));
 			List<Row> orderLineRow = orderLineResult.all();
@@ -114,6 +112,6 @@ public class PopularItemTransaction {
 		Connection connection = new Connection();
 		connection.connect("127.0.0.1", "project");
 		PopularItemTransaction popularItem = new PopularItemTransaction(connection);
-		popularItem.getPopularItem(1, 1, 1);
+		popularItem.getPopularItem(1, 1, 3);
 	}
 }
