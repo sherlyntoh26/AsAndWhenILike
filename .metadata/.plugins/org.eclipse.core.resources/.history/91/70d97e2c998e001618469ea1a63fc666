@@ -45,8 +45,8 @@ public class testing {
 		String dIDStr = String.format("%02d", dID);
 		System.out.println(dIDStr);
 		
-		String stmt = "SELECT c_first, c_middle, c_last FROM project.customer WHERE c_w_id = 1 AND c_d_id = 1 AND c_id =123;";
+		String stmt = "SELECT c_first, c_middle, c_last FROM customer WHERE c_w_id = 1 AND c_d_id = 1 AND c_id =123;";
 		ResultSet result = session.execute(stmt);
-		System.out.println("first" + result.one().getString("c_first"));
+		System.out.println(result.one().getString("c_first"));
 	}
 }

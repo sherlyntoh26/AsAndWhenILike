@@ -1,0 +1,116 @@
+
+package project;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
+import com.datastax.driver.core.PreparedStatement;
+import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.Row;
+import com.datastax.driver.core.Session;
+
+public class PopularItemTransaction {
+	private Session session;
+	private PreparedStatement selectOrdersStmt;
+	private PreparedStatement selectCustomerStmt;
+	private PreparedStatement selectOrderLineStmt;
+
+	public PopularItemTransaction() {
+
+	}
+
+	public PopularItemTransaction(Connection connection) {
+		this.session = connection.getSession();
+		selectOrdersStmt = session
+				.prepare("SELECT o_id, o_entry_d, o_c_id FROM orders WHERE o_w_id = ? AND o_d_id = ? AND o_id >= ?;");
+		selectCustomerStmt = session.prepare("SELECT c_first, c_middle, c_last FROM customer WHERE c_w_id = 1 AND c_d_id = 1 AND c_id =123;");
+		selectOrderLineStmt = session.prepare(
+				"SELECT ol_i_name, ol_quantity FROM orderLine WHERE ol_w_id = ? AND ol_d_id = ? AND ol_o_id = ? AND ol_number >= 1;");
+	}
+
+	public void getPopularItem(int wID, int dID, int noOfLastOrders) {
+
+		System.out.println(String.format("District Identifier: (%d, %d)", wID, dID));
+		System.out.println(String.format("Number of last orders to be examined: %d", noOfLastOrders));
+
+		String nextID;
+		if (dID == 10) {
+			nextID = "wdi_d_next_o_id_10";
+		} else {
+			nextID = "wdi_d_next_o_id_0" + dID;
+		}
+
+		String warehouseStmt = "SELECT %s FROM warehouseDistrictInfo WHERE wdi_w_id = %d;";
+		ResultSet warehouseResult = session.execute(String.format(warehouseStmt, nextID, wID));
+		int nextOID = warehouseResult.one().getInt(nextID);
+
+		ResultSet ordersResult = session.execute(selectOrdersStmt.bind(wID, dID, nextOID - noOfLastOrders));
+		List<Row> ordersRow = ordersResult.all();
+		HashMap<String, Integer> allPopItem = new HashMap<String, Integer>();
+
+		for (int i = 0; i < ordersRow.size(); i++) {
+			Row currentRow = ordersRow.get(i);
+			int cID = currentRow.getInt("o_c_id");
+			
+			
+			String stmt = "SELECT c_first, c_middle, c_last FROM customer WHERE c_w_id =" +wID+ " AND c_d_id ="+ dID + " AND c_id =" + cID +";";
+			ResultSet result = session.execute(stmt);
+		    System.out.println("first " + result.one().getString("c_first"));
+
+			//ResultSet customerResult = session.execute(selectCustomerStmt.bind(wID, dID, cID));
+			ResultSet customerResult = session.execute(selectCustomerStmt.bind());
+			System.out.println(String.format("Order No.: %d | Entry date & time: %s", currentRow.getInt("o_id"),
+					currentRow.getTimestamp("o_entry_d").toString()));
+			System.out.println(String.format("Customer Name: (%s, %s, %s)", result.one().getString("c_first"),
+					result.one().getString("c_middle"), result.one().getString("c_last")));
+
+			ResultSet orderLineResult = session.execute(selectOrderLineStmt.bind(wID, dID, currentRow.getInt("o_id")));
+			List<Row> orderLineRow = orderLineResult.all();
+			int popQty = -1;
+			int currentQty = 0;
+			String itemName = "";
+			ArrayList<String> itemNames = new ArrayList<String>();
+			for (int j = 0; j < orderLineRow.size(); j++) {
+				currentQty = orderLineRow.get(j).getDecimal("ol_quantity").intValue();
+				itemName = orderLineRow.get(j).getString("ol_i_name");
+				if (currentQty > popQty) {
+					popQty = currentQty;
+					itemNames.clear();
+					itemNames.add(itemName);
+				} else if (currentQty == popQty) {
+					itemNames.add(itemName);
+				}
+			}
+
+			System.out.println("Order's popular item(s)");
+			for (int j = 0; j < itemNames.size(); j++) {
+
+				if (allPopItem.containsKey(itemNames.get(j))) {
+					// exist --> update list
+					int value = allPopItem.get(itemNames.get(j));
+					allPopItem.replace(itemNames.get(j), value + 1);
+				} else {
+					// does not exist --> insert to list
+					allPopItem.put(itemNames.get(j), 1);
+				}
+
+				System.out.println(String.format("Item Name: %s | Quantity ordered: %d", itemNames.get(j), popQty));
+			}
+		}
+
+		System.out.println("All popular item(s)");
+		for (String itemName : allPopItem.keySet()) {
+			int value = allPopItem.get(itemName);
+			float percentage = ((float) value / noOfLastOrders) * 100f;
+			System.out.println(String.format("Item Name: %s | Percentage: %.2f%%", itemName, percentage));
+		}
+	}
+
+	public static void main(String[] args) {
+		Connection connection = new Connection();
+		connection.connect("127.0.0.1", "project");
+		PopularItemTransaction popularItem = new PopularItemTransaction(connection);
+		popularItem.getPopularItem(1, 1, 1);
+	}
+}
