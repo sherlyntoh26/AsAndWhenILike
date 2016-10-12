@@ -42,7 +42,7 @@ public class DeliveryTransaction {
 				Row customerRow = customerResult.one();
 				float c_balance = customerRow.getDecimal("c_balance").floatValue();
 				int c_delivery_cnt = customerRow.getInt("c_delivery_cnt");
-				session.execute(deleteCustomerBalanceStmt.bind(BigDecimal.valueOf(c_balance), wID, customerRow.getInt("c_d_id"), customerRow.getInt("c_id")));
+				session.execute(deleteCustomerBalanceStmt.bind(BigDecimal.valueOf(c_balance, wID, customerRow.getInt("c_d_id"), customerRow.getInt("c_id"))));
 				c_balance+=o_total_amount;
 				c_delivery_cnt+=1;
 				session.execute(updateCustomerStmt.bind(BigDecimal.valueOf(c_balance),c_delivery_cnt,wID,i,o_c_id));

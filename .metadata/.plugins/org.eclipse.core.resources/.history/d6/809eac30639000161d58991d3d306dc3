@@ -24,8 +24,8 @@ public class DeliveryTransaction {
 		selectCustomerStmt = session.prepare("select c_d_id, c_id, c_balance, c_delivery_cnt, c_first, c_middle, c_last, c_w_name, c_d_name from customer where c_w_id = ? and c_d_id = ? and c_id = ? allow filtering;"); 
 		updateOrderStmt = session.prepare("update orders set o_carrier_id = ?, o_delivery_d = ? where o_w_id = ? and o_d_id = ? and o_id = ?;");
 		updateCustomerStmt = session.prepare("update customer set c_balance = ?, c_delivery_cnt = ? where c_w_id = ? and c_d_id = ? and c_id = ?;");	
-		deleteCustomerBalanceStmt = session.prepare("DELETE FROM customerBalance WHERE c_key='key' AND c_balance = ? AND c_w_id = ? AND c_d_id =? AND c_id =?;");
-		insertCustomerBalanceStmt = session.prepare("INSERT INTO customerBalance(c_key, c_balance, c_w_id, c_d_id, c_id, c_first, c_middle, c_last, c_w_name, c_d_name) VALUES ('key', ?, ?, ?, ?, ?, ?, ?, ?, ?);");
+		deleteCustomerBalanceStmt = session.prepare("DELETE FROM customerBalance WHERE c_balance = ? AND c_w_id = ? AND c_d_id =? AND c_id =?;");
+		insertCustomerBalanceStmt = session.prepare("INSERT INTO customerBalance(c_w_id, c_d_id, c_id, c_balance, c_first, c_middle, c_last, c_w_name, c_d_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);");
 	}
 	
 	public void makeDelivery(int wID, int carrierID) {
@@ -46,7 +46,7 @@ public class DeliveryTransaction {
 				c_balance+=o_total_amount;
 				c_delivery_cnt+=1;
 				session.execute(updateCustomerStmt.bind(BigDecimal.valueOf(c_balance),c_delivery_cnt,wID,i,o_c_id));
-				session.execute(insertCustomerBalanceStmt.bind(BigDecimal.valueOf(c_balance), wID, customerRow.getInt("c_d_id"), customerRow.getInt("c_id"), customerRow.getString("c_first"), customerRow.getString("c_middle"), customerRow.getString("c_last"), customerRow.getString("c_w_name"), customerRow.getString("c_d_name")));
+				session.execute(insertCustomerBalanceStmt.bind(wID, customerRow.getInt("c_d_id"), customerRow.getInt("c_id"), BigDecimal.valueOf(c_balance), customerRow.getString("c_first"), customerRow.getString("c_middle"), customerRow.getString("c_last"), customerRow.getString("c_w_name"), customerRow.getString("c_d_name")));
 
 			}
 		}

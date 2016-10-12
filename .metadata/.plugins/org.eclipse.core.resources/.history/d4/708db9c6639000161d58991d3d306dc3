@@ -86,7 +86,7 @@ public class PaymentTransaction {
 		//PreparedStatement warehouseStmt = payment.session.prepare("INSERT INTO warehouseDistrict(wd_w_id, wd_d_id, wd_w_name, wd_w_street_1, wd_w_street_2, wd_w_city, wd_w_state, wd_w_zip, wd_d_name, wd_d_street_1, wd_d_street_2, wd_d_city, wd_d_state, wd_d_zip) VALUES (1, 1, 'warehouse name', 'warehouse street 1', 'warehouse street 2', 'warehouse city', 'warehouse state', 'warehouse zip', 'district name', 'district street 1', 'district street 2', 'district city', 'district state', 'district zip');");
 		//payment.session.execute(warehouseStmt.bind());
 		
-		payment.makePayment(1, 1, 331, 37.00f);
+		payment.makePayment(1, 1, 331, 12.00f);
 	}
 
 }
