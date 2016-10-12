@@ -17,7 +17,7 @@ public class TopBalanceTransaction {
 	
 	public TopBalanceTransaction(Connection connection){
 		session = connection.getSession();
-		selectCustomerStmt = session.prepare("SELECT c_first, c_middle, c_last, c_balance, c_w_name, c_d_name FROM customerBalance WHERE c_bal='bal' LIMIT 10;");
+		selectCustomerStmt = session.prepare("SELECT c_first, c_middle, c_last, c_balance, c_w_name, c_d_name FROM customerBalance WHERE c_key='key' LIMIT 10;");
 	}
 	
 	public void getTopbalance(){

@@ -24,8 +24,8 @@ public class DeliveryTransaction {
 		selectCustomerStmt = session.prepare("select c_d_id, c_id, c_balance, c_delivery_cnt, c_first, c_middle, c_last, c_w_name, c_d_name from customer where c_w_id = ? and c_d_id = ? and c_id = ? allow filtering;"); 
 		updateOrderStmt = session.prepare("update orders set o_carrier_id = ?, o_delivery_d = ? where o_w_id = ? and o_d_id = ? and o_id = ?;");
 		updateCustomerStmt = session.prepare("update customer set c_balance = ?, c_delivery_cnt = ? where c_w_id = ? and c_d_id = ? and c_id = ?;");	
-		deleteCustomerBalanceStmt = session.prepare("DELETE FROM customerBalance WHERE c_bal='bal' AND c_balance = ?;");
-		insertCustomerBalanceStmt = session.prepare("INSERT INTO customerBalance(c_bal, c_balance, c_w_id, c_d_id, c_id, c_first, c_middle, c_last, c_w_name, c_d_name) VALUES ('bal', ?, ?, ?, ?, ?, ?, ?, ?, ?);");
+		deleteCustomerBalanceStmt = session.prepare("DELETE FROM customerBalance WHERE c_key='key' AND c_balance = ?;");
+		insertCustomerBalanceStmt = session.prepare("INSERT INTO customerBalance(c_key, c_balance, c_w_id, c_d_id, c_id, c_first, c_middle, c_last, c_w_name, c_d_name) VALUES ('key', ?, ?, ?, ?, ?, ?, ?, ?, ?);");
 	}
 	
 	public void makeDelivery(int wID, int carrierID) {

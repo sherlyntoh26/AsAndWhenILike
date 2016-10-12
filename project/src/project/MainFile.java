@@ -3,6 +3,7 @@ package project;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.util.ArrayList;
 import java.util.Date;
 
 public class MainFile {
@@ -39,6 +40,8 @@ public class MainFile {
 		arrayIpAdd[1] = "192.168.48.250";
 		arrayIpAdd[2] = "192.168.48.251";
 		int noNum = 0;
+		
+		ArrayList<Float> listThroughput = new ArrayList<Float>();
 
 		for (int i = 0; i < transactionFileNumber; i++) {
 			
@@ -46,7 +49,8 @@ public class MainFile {
 			Thread tnew = new Thread(new Runnable(){
 				@Override
 				public void run(){
-					mf.runTransactions();
+					float currentThroughput = mf.runTransactions();
+					listThroughput.add(currentThroughput);
 				}
 			});
 			tnew.start();
@@ -55,6 +59,24 @@ public class MainFile {
 				noNum = 0;
 			}
 		}
+		
+		float max = -1;
+		float min = 99999;
+		float average, total = 0;
+		for(int i=0; i<listThroughput.size(); i++){
+			if(listThroughput.get(i) > max){
+				max = listThroughput.get(i);
+			}
+			
+			if(listThroughput.get(i) < min){
+				min = listThroughput.get(i);
+			}
+			total += listThroughput.get(i);
+		}
+		average = total/listThroughput.size();
+		System.out.print(String.format("Maximum Throughput: %.02f", max));
+		System.out.println(String.format("Minimum Throughput: %.02f", min));
+		System.out.println(String.format("Average Throughput: %.02f", average));
 	}
 
 	public MainFile(boolean usingD8, String dbKeyspace, int noOfNodes, String ipAdd, int transactionFileNumber) {
@@ -65,9 +87,11 @@ public class MainFile {
 		this.transactionFileNumber = transactionFileNumber;
 	}
 
-	public void runTransactions() {
+	public float runTransactions() {
 		// do timing here. 
 		int noOfTransaction = 0;
+		float throughput;
+		float elapsedTime;
 		Date dateStart = new Date();
 		
 		// get connection
@@ -117,7 +141,6 @@ public class MainFile {
 					}
 					// send to Order object to do the insertion to DB
 					order.newOrder(wid, did, cid, noOfItem, itemID, supplyWID, quantity);
-					noOfTransaction +=1;
 					
 				} else if (inputLine.charAt(0) == 'P') {
 					// payment transaction --> 1 line
@@ -129,7 +152,6 @@ public class MainFile {
 					
 					// send to Payment object to do the update of customer in DB
 					payment.makePayment(customerWID, customerDID, customerID, paymentAmt);
-					noOfTransaction +=1;
 				} else if (inputLine.charAt(0) == 'D') {
 					// delivery transaction --> 1 line
 					// 3 comma: D, W_ID, CARRIER_ID
@@ -138,7 +160,6 @@ public class MainFile {
 					
 					// send to delivery object to do the update of delivery in DB
 					delivery.makeDelivery(warehouseID, carrierID);
-					noOfTransaction +=1;
 				} else if (inputLine.charAt(0) == 'O') {
 					// order - status transaction --> 1 line
 					// 4 comma: O, C_W_ID, C_D_ID, C_ID
@@ -148,7 +169,6 @@ public class MainFile {
 					
 					// send to order-status object to query the status of the last order of a customer
 					orderStatus.getOrderStatus(customerWID, customerDID, customerID);
-					noOfTransaction +=1;
 				} else if (inputLine.charAt(0) == 'S') {
 					// stock - level transaction --> 1 line
 					// 5 comma: S, W_ID, D_ID, T, L
@@ -159,7 +179,6 @@ public class MainFile {
 					
 					// send to stock-level object to check stock level below specified threshold
 					stockLvl.stockLevel(warehouseID, districtID, stockThreshold, noOfLastOrders);
-					noOfTransaction +=1;
 				} else if (inputLine.charAt(0) == 'I') {
 					// popular - item transaction --> 1 line
 					// 4 comma: I, W_ID, D_ID, L
@@ -169,18 +188,18 @@ public class MainFile {
 					
 					// send to popular-item object to check 
 					popularItem.getPopularItem(warehouseID, districtID, noOfLastOrders);
-					noOfTransaction +=1;
 				} else if (inputLine.charAt(0) == 'T') {
 					// top - balance transaction --> 1 line
 					// 1 value only
 					
 					// send to top-balance transaction 
 					topBalance.getTopbalance();
-					noOfTransaction +=1;
+					
 				} else {
 					System.out.println("xact wrong format");
 				}
-				System.out.println("done 1 transaction");
+				noOfTransaction +=1;
+				//System.out.println("done 1 transaction");
 				inputLine = reader.readLine();
 			}
 			reader.close();
@@ -191,14 +210,15 @@ public class MainFile {
 			//after read file --> close connection
 			connection.close();
 			Date dateEnd = new Date();
-			long elapsedTime = (dateEnd.getTime() - dateStart.getTime())/1000;
-			float throughput = elapsedTime/noOfTransaction;
+			elapsedTime = (float)((dateEnd.getTime() - dateStart.getTime())/1000);
+			throughput = (float)noOfTransaction/elapsedTime;
 			
 			// print 1 file information
 			System.out.println(String.format("Total number of transactions processed: %d", noOfTransaction));
-			System.out.println(String.format("Total elapsed time for processing transactions: %d seconds", elapsedTime));
-			System.out.println(String.format("Transaction throughput: %.2f", throughput));
+			System.out.println(String.format("Total elapsed time for processing transactions: %.02f seconds", elapsedTime));
+			System.out.println(String.format("Transaction throughput: %.02f", throughput));
+			
 		}
-		
+		return throughput;
 	}
 }

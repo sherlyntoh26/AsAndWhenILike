@@ -12,24 +12,24 @@ public class testing {
 		Date date = new Date();
 		System.out.println("date1:" + date);
 		
-		Cluster cluster = Cluster.builder().addContactPoints("127.0.0.1").build();
-		Session session = cluster.connect();
+	//	Cluster cluster = Cluster.builder().addContactPoints("127.0.0.1").build();
+	//	Session session = cluster.connect();
 		
 //		String cql = "DROP KEYSPACE myfirstcassandradb";
 //		session.execute(cql);
 //		
-		String cqlStatement = "CREATE KEYSPACE IF NOT EXISTS myfirstcassandradb WITH " + 
-				"replication = {'class':'SimpleStrategy','replication_factor':1}";        
-		session.execute(cqlStatement);
-
-		String cqlStatement2 = "CREATE TABLE IF NOT EXISTS myfirstcassandradb.users (" + 
-				" user_name varchar PRIMARY KEY," + 
-				" password varchar " + 
-				");";
-		session.execute(cqlStatement2);
-		
-		String cqlStatement3 = "INSERT INTO myfirstcassandradb.users(user_name, password) VALUES('lyn', 'lyn')";
-		session.execute(cqlStatement3);
+//		String cqlStatement = "CREATE KEYSPACE IF NOT EXISTS myfirstcassandradb WITH " + 
+//				"replication = {'class':'SimpleStrategy','replication_factor':1}";        
+//		session.execute(cqlStatement);
+//
+//		String cqlStatement2 = "CREATE TABLE IF NOT EXISTS myfirstcassandradb.users (" + 
+//				" user_name varchar PRIMARY KEY," + 
+//				" password varchar " + 
+//				");";
+//		session.execute(cqlStatement2);
+//		
+//		String cqlStatement3 = "INSERT INTO myfirstcassandradb.users(user_name, password) VALUES('lyn', 'lyn')";
+//		session.execute(cqlStatement3);
 
 		System.out.println("Done");
 		//System.exit(0);
@@ -39,15 +39,15 @@ public class testing {
 		Date endDate = new Date(); 
 		System.out.println("date2: " + endDate);
 		
-		System.out.println(String.format("%d", (endDate.getTime() - date.getTime())/1000));
+		System.out.println(String.format("%f", (float)(endDate.getTime() - date.getTime())/1000));
 		
-		int dID = 10;
-		String dIDStr = String.format("%02d", dID);
-		System.out.println(dIDStr);
+//		int dID = 10;
+//		String dIDStr = String.format("%02d", dID);
+//		System.out.println(dIDStr);
 		
-		String stmt = "SELECT c_first, c_middle, c_last FROM project.customer WHERE c_w_id = 1 AND c_d_id = 1 AND c_id =123;";
-		ResultSet result = session.execute(stmt);
-		System.out.println("first" + result.one().getString("c_first"));
+//		String stmt = "SELECT c_first, c_middle, c_last FROM project.customer WHERE c_w_id = 1 AND c_d_id = 1 AND c_id =123;";
+//		ResultSet result = session.execute(stmt);
+//		System.out.println("first" + result.one().getString("c_first"));
 	}
 }
 // the top one jus ignore. i testing only. 

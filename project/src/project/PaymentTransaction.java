@@ -25,8 +25,8 @@ public class PaymentTransaction {
 		selectCustomerStmt = session.prepare("SELECT c_first, c_middle, c_last, c_street_1, c_street_2, c_city, c_state, c_zip, c_phone, c_since, c_credit, c_credit_lim, c_discount, c_balance, c_ytd_payment, c_payment_cnt, c_w_name, c_d_name FROM customer WHERE c_w_id = ? AND c_d_id = ? AND c_id = ?;");
 		updateCustomerStmt = session.prepare("UPDATE customer SET c_balance = ?, c_ytd_payment = ?, c_payment_cnt = ? WHERE c_w_id = ? AND c_d_id = ? AND c_id = ?;");
 		selectWarehouseDistrictStmt = session.prepare("SELECT wd_w_street_1, wd_w_street_2, wd_w_city, wd_w_state, wd_w_zip, wd_d_street_1, wd_d_street_2, wd_d_city, wd_d_state, wd_d_zip FROM warehouseDistrict WHERE wd_w_id = ? AND wd_d_id = ?;");
-		deleteCustomerBalanceStmt = session.prepare("DELETE FROM customerBalance WHERE c_bal='bal' AND c_balance = ?;");
-		insertCustomerBalanceStmt = session.prepare("INSERT INTO customerBalance(c_bal, c_balance, c_w_id, c_d_id, c_id, c_first, c_middle, c_last, c_w_name, c_d_name) VALUES ('bal', ?, ?, ?, ?, ?, ?, ?, ?, ?);");
+		deleteCustomerBalanceStmt = session.prepare("DELETE FROM customerBalance WHERE c_key='key' AND c_balance = ?;");
+		insertCustomerBalanceStmt = session.prepare("INSERT INTO customerBalance(c_key, c_balance, c_w_id, c_d_id, c_id, c_first, c_middle, c_last, c_w_name, c_d_name) VALUES ('key', ?, ?, ?, ?, ?, ?, ?, ?, ?);");
 	}
 
 	public void makePayment(int cWID, int cDID, int cID, float payment) {
